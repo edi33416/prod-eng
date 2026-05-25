@@ -731,6 +731,38 @@ Open ``http://127.0.0.1:8000/docs`` for the auto-generated Swagger UI. Every end
 request body, and response model is documented from the code — it cannot drift from the
 implementation.
 
+-----
+
+Swagger UI
+-----------
+
+FastAPI generates an OpenAPI schema from your route definitions, Pydantic models, and type
+annotations, and serves two interactive documentation UIs automatically:
+
+- ``/docs`` — **Swagger UI**: a web interface for browsing and calling endpoints directly
+  from the browser
+- ``/redoc`` — **ReDoc**: a read-only alternative with a cleaner layout, better suited for
+  sharing API documentation with external consumers
+
+Both are always in sync with the code because they are generated from it — there is no
+separate documentation file to maintain.
+
+**What Swagger UI shows:**
+
+- Every endpoint grouped by tag, with its method, path, and description
+- The full JSON schema for each request body and response model, including validation
+  constraints (``ge=1``, ``minLength=10``)
+- The "Try it out" button — fill in parameters and request body, click Execute, and see
+  the real response from the running server
+
+.. admonition:: Observation:
+
+   Swagger UI is invaluable during development but should be disabled or access-restricted
+   in production. Exposing a fully interactive API explorer to the public reveals your
+   entire API surface and makes it trivial to probe endpoints. In Chapter 6, authentication
+   is added to the API; at that point, Swagger UI can be configured to require credentials
+   before use. Until then, treat ``/docs`` as a development tool only.
+
 Testing with ``curl``:
 
 .. code-block:: bash
