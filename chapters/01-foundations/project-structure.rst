@@ -142,6 +142,31 @@ Editable Install
 During development, install the package in *editable mode* so changes to source files are
 reflected immediately without reinstalling:
 
+.. admonition:: What does ``pip install -e .`` actually do?
+   :class: dropdown
+
+   A normal ``pip install`` copies your source files into the virtual environment's
+   ``site-packages/`` directory. Editable mode (``-e``) skips the copy and instead writes
+   a small ``.pth`` file that points Python directly at your ``src/`` directory:
+
+   .. code-block:: text
+
+      # .venv/lib/python3.11/site-packages/bookshelf.pth
+      /path/to/bookshelf/src
+
+   This means ``import bookshelf`` resolves to your live source files. Edit a file, and
+   the change is visible on the next import — no reinstall needed.
+
+   **Why is it required at all?** Because of the ``src`` layout. Without an install step,
+   Python has no way to find ``src/bookshelf/`` — the ``src/`` directory is not on
+   ``sys.path``. Running ``python -m pytest`` or ``python -c "import bookshelf"`` would
+   raise ``ModuleNotFoundError``. The editable install is the bridge between the ``src``
+   layout's isolation guarantee and a working development environment.
+
+   The ``".[dev]"`` suffix installs the package itself plus everything in
+   ``[project.optional-dependencies] dev`` — linters, test tools, and type checkers — in
+   one command.
+
 .. code-block:: bash
 
    $ pip install -e ".[dev]"
