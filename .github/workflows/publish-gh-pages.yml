@@ -1,0 +1,34 @@
+name: Publish Github Pages
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Cancel any in-progress job or run
+# https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#concurrency
+concurrency:
+  group: gh-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pages:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+    - id: deployment
+      uses: sphinx-notes/pages@update-deps
+      with:
+        requirements_path: ./requirements.txt
+        sphinx_build_options: --conf-dir .
+        cache: true
+        publish: ${{ github.ref_name == 'master' }}
