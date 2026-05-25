@@ -139,6 +139,48 @@ database. Monitoring tracks request latency and error rates. AI endpoints enhanc
 
 -----
 
+Prerequisites
+-------------
+
+This course assumes solid competency in several areas. The techniques covered build on these
+foundations — if the prerequisites are shaky, the production engineering concepts will be
+harder to absorb. The course does not teach these from scratch; targeted refreshers appear
+as collapsible **Crash Course** blocks where they are most relevant.
+
+**Python proficiency**
+   You are comfortable writing Python: functions, classes, modules, exceptions, and
+   comprehensions. You know how to use ``pip``, virtual environments, and install packages.
+   You can read a stack trace and find the line that caused it.
+
+**Linux command line**
+   You work comfortably in a terminal: navigating the filesystem, managing files and
+   directories, installing packages, reading and writing files with standard tools
+   (``cat``, ``grep``, ``sed``, ``awk``), and running background processes.
+
+**Operating systems fundamentals**
+   You understand processes and threads: what they are, how they are scheduled, and how
+   they communicate. You know what file descriptors are and how the OS manages them. You
+   are familiar with signals (``SIGTERM``, ``SIGKILL``) and what happens when a process exits.
+
+**Networking basics**
+   You understand TCP/IP at a conceptual level: IP addresses, ports, and the client–server
+   model. You know the HTTP request/response cycle — methods, headers, status codes, and
+   bodies. You have a working understanding of DNS: what a hostname is and how it resolves
+   to an IP address.
+
+**Debugging skills**
+   You can debug a running program: you know how to add print statements, read error
+   messages, and narrow down a failure to a specific function or line. You have used a
+   debugger (``pdb`` or an IDE debugger) at least once, even if it is not your default.
+
+.. note::
+
+   If any of these feel uncertain, that is fine — look for the **Crash Course** blocks
+   throughout the chapter that provide quick refreshers on the most relevant concepts.
+   For deeper gaps, the course materials include pointers to external resources.
+
+-----
+
 This Chapter
 ------------
 
