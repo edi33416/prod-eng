@@ -76,7 +76,8 @@ by resource type. Tests live outside ``src/`` — they are never shipped with th
 
 ``pyproject.toml`` replaces ``setup.py``, ``setup.cfg``, ``requirements.txt``, and separate
 tool configuration files (``pytest.ini``, ``.flake8``, ``mypy.ini``) with a single file.
-Every major Python tool reads it.
+Every major Python tool reads it. It is the standard defined in :pep:`518` and :pep:`621`
+and is supported by pip, setuptools, uv, hatch, poetry, ruff, mypy, pytest, and more.
 
 Here is the complete ``pyproject.toml`` for the BookShelf API:
 
@@ -84,7 +85,7 @@ Here is the complete ``pyproject.toml`` for the BookShelf API:
 
    [build-system]
    requires = ["setuptools>=68"]
-   build-backend = "setuptools.backends.legacy:build"
+   build-backend = "setuptools.build_meta"
 
    [project]
    name = "bookshelf"
@@ -128,13 +129,185 @@ Here is the complete ``pyproject.toml`` for the BookShelf API:
    testpaths = ["tests"]
    addopts = "--cov=bookshelf --cov-report=term-missing"
 
-Key sections:
+The sections are logically grouped into three areas: **build configuration**,
+**project metadata and dependencies**, and **tool configuration**. Each is described below.
 
-- ``[build-system]`` — tells pip how to build the package
-- ``[project]`` — package metadata: name, version, Python constraint, runtime dependencies
-- ``[project.optional-dependencies]`` — dev tools installed with ``pip install -e ".[dev]"``
-- ``[tool.setuptools.packages.find]`` — tells setuptools to look for packages inside ``src/``
-- ``[tool.ruff]``, ``[tool.mypy]``, ``[tool.pytest.ini_options]`` — tool configuration (no extra files needed)
+Build System
+^^^^^^^^^^^^
+
+.. code-block:: toml
+
+   [build-system]
+   requires = ["setuptools>=68"]
+   build-backend = "setuptools.build_meta"
+
+This section is read by pip *before* installing anything. It tells pip which build tool to
+download and use when turning your source tree into an installable package.
+
+``requires`` lists the tools pip must install into a temporary build environment. ``build-backend``
+is the Python import path to the builder entrypoint. Other valid backends include
+``hatchling.build``, ``flit_core.buildapi``, and ``poetry.core.masonry.api`` — they are
+interchangeable from pip's perspective.
+
+.. admonition:: Observation:
+
+   If ``[build-system]`` is missing, pip falls back to legacy behaviour and assumes
+   setuptools — but emits a deprecation warning. Always include it explicitly.
+
+Project Metadata
+^^^^^^^^^^^^^^^^
+
+.. code-block:: toml
+
+   [project]
+   name = "bookshelf"
+   version = "0.1.0"
+   description = "A book catalog and review service"
+   requires-python = ">=3.11"
+   dependencies = [
+       "fastapi>=0.111",
+       "uvicorn[standard]>=0.30",
+   ]
+
+``name`` must be unique on PyPI if you ever publish the package; for internal-only packages
+it can be anything. ``requires-python`` is a hard constraint enforced by pip at install time
+— if a user tries to install on Python 3.9, pip will refuse with a clear error rather than
+installing and failing mysteriously at runtime.
+
+``dependencies`` lists *runtime* dependencies: packages required for the application to run.
+Keep this list minimal. Every entry is a transitive risk — each dependency brings its own
+dependencies, its own security surface, and its own upgrade cadence.
+
+**Version specifiers** control which releases pip considers acceptable:
+
+.. list-table::
+   :widths: 20 40 40
+   :header-rows: 1
+
+   * - Specifier
+     - Meaning
+     - When to use
+   * - ``>=0.111``
+     - Any version 0.111 or newer
+     - Well-maintained libraries where you want security patches automatically
+   * - ``>=0.111,<1.0``
+     - 0.111 up to (but not including) 1.0
+     - Libraries that may introduce breaking changes in major versions
+   * - ``==0.111.*``
+     - Any 0.111.x patch release
+     - When you need predictable minor-version behaviour
+   * - ``==0.111.3``
+     - Exactly this version
+     - Avoid in ``pyproject.toml``; use lock files instead (see below)
+
+.. admonition:: Observation:
+
+   ``uvicorn[standard]`` uses pip's *extras* syntax: install ``uvicorn`` plus the optional
+   dependencies listed under its ``[standard]`` group (``httptools``, ``websockets``,
+   ``uvloop`` on Linux). Use extras when a library has optional features that require
+   additional packages. The square brackets are part of the dependency specifier, not a TOML
+   construct.
+
+.. warning::
+
+   Do not pin exact versions (``==x.y.z``) in ``[project] dependencies``. Exact pins make
+   it impossible for other packages to share a compatible version and cause unnecessary
+   conflicts. Pin exact versions in a *lock file* (``requirements.lock``,
+   ``uv.lock``) that is generated from ``pyproject.toml`` and committed separately.
+   ``pyproject.toml`` expresses intent; the lock file records the exact resolved state.
+
+Optional Dependencies
+"""""""""""""""""""""
+
+.. code-block:: toml
+
+   [project.optional-dependencies]
+   dev = [
+       "pytest>=8",
+       "pytest-cov>=5",
+       "httpx>=0.27",
+       "ruff>=0.5",
+       "mypy>=1.10",
+       "pre-commit>=3.7",
+   ]
+
+Optional dependency groups are installed on demand using *extras* syntax:
+
+.. code-block:: bash
+
+   $ pip install -e ".[dev]"          # install package + dev tools
+   $ pip install -e ".[dev,docs]"     # install package + dev tools + docs tools
+
+The ``dev`` group here contains every tool needed for local development and CI — linting,
+type checking, testing, and pre-commit hooks. Keeping them together means a new contributor
+can get a fully configured environment with a single command.
+
+You can define multiple groups for different contexts:
+
+.. code-block:: toml
+
+   [project.optional-dependencies]
+   dev  = ["pytest>=8", "ruff>=0.5", "mypy>=1.10"]
+   docs = ["sphinx>=7", "furo>=2024"]
+   ci   = ["pytest-cov>=5", "pytest-xdist>=3"]
+
+Setuptools Package Discovery
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: toml
+
+   [tool.setuptools.packages.find]
+   where = ["src"]
+
+Without this, setuptools would scan the project root for Python packages and find nothing
+useful — the package lives inside ``src/``. This single line redirects the scan.
+
+The alternative to automatic discovery is an explicit list:
+
+.. code-block:: toml
+
+   [tool.setuptools.packages]
+   find = {}  # disabled
+
+   # explicit list:
+   [tool.setuptools]
+   packages = ["bookshelf", "bookshelf.routers"]
+
+Explicit lists are fragile — you must update them every time you add a sub-package. Let
+setuptools discover automatically unless you have a specific reason not to.
+
+Tool Configuration
+^^^^^^^^^^^^^^^^^^
+
+The ``[tool.*]`` namespace is reserved for third-party tools. Each tool reads its own
+section; tools ignore sections they do not recognise. This is what allows a single file to
+configure ruff, mypy, pytest, coverage, and any other tool in the ecosystem.
+
+.. code-block:: toml
+
+   [tool.ruff]
+   line-length = 88
+   target-version = "py311"
+
+   [tool.mypy]
+   strict = true
+   python_version = "3.11"
+
+   [tool.pytest.ini_options]
+   testpaths = ["tests"]
+   addopts = "--cov=bookshelf --cov-report=term-missing"
+
+These are covered in detail in their respective sections. The key point is that they live
+here rather than in ``.flake8``, ``mypy.ini``, ``pytest.ini``, or ``setup.cfg`` — one file,
+no hunting across the project root.
+
+.. admonition:: Observation:
+
+   ``target-version = "py311"`` in the ruff config and ``python_version = "3.11"`` in the
+   mypy config should match the ``requires-python`` constraint in ``[project]``. If they
+   diverge, the linter or type checker may accept syntax that is invalid on the minimum
+   supported Python version, or reject syntax that is valid on it. Keep all three in sync
+   whenever you bump the minimum Python version.
 
 Editable Install
 ^^^^^^^^^^^^^^^^
