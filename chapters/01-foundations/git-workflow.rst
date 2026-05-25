@@ -341,6 +341,203 @@ Enable:
 
 -----
 
+Commit Discipline, Squashing & Tags
+-------------------------------------
+
+Focused Commits and PRs
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Every commit and every PR should address **exactly one issue**. Not "one issue plus a small
+cleanup". Not "two related bugs fixed together". One issue.
+
+This is not pedantry — it is the practice that makes two critical operations possible later:
+
+- **Bisecting regressions.** ``git bisect`` works by binary-searching commits to find the
+  first one that introduced a bug. If commits bundle multiple unrelated changes, bisect
+  narrows you down to a commit that changed five things at once. You still have to figure out
+  which of those five things caused the regression.
+
+- **Reverting safely.** ``git revert <hash>`` creates a new commit that undoes a specific
+  change. If a commit fixes a bug *and* refactors a module *and* bumps a dependency, reverting
+  it undoes all three — including the refactor and the dependency bump that had nothing to do
+  with the problem.
+
+The same principle applies to PRs. A PR that fixes two bugs should be two PRs. A PR that
+adds a feature and also "cleans up a few things nearby" should separate the cleanup into its
+own PR. Reviewers can evaluate a focused change clearly; they cannot confidently approve a
+change that mixes concerns.
+
+.. admonition:: Observation:
+
+   A common objection is that splitting work into many small PRs feels slower. In practice
+   the opposite is true: small, focused PRs get reviewed and merged faster, create fewer
+   merge conflicts, and are far easier to roll back when something goes wrong. Large PRs
+   accumulate review debt — they sit open longer, reviewers defer them, and they are
+   eventually merged with less scrutiny than they deserve.
+
+.. admonition:: How to use ``git bisect``
+   :class: dropdown
+
+   ``git bisect`` performs a binary search through commit history to find the first commit
+   that introduced a bug. Instead of manually checking commits one by one, Git halves the
+   search space with each step — finding the culprit in ``log₂(n)`` steps.
+
+   **Start a bisect session:**
+
+   .. code-block:: bash
+
+      $ git bisect start
+      $ git bisect bad                  # current commit is broken
+      $ git bisect good v0.1.0          # this tag (or any commit hash) was known-good
+
+   Git checks out a commit halfway between the good and bad points. Test whether the bug
+   is present, then tell Git the result:
+
+   .. code-block:: bash
+
+      $ python -m pytest tests/unit/test_books.py   # or any manual check
+      $ git bisect good    # bug not present — search the later half
+      # or
+      $ git bisect bad     # bug present — search the earlier half
+
+   Repeat until Git identifies the first bad commit:
+
+   .. code-block:: bash
+
+      a3f1c82 is the first bad commit
+      commit a3f1c82
+      Author: alice <alice@example.com>
+      Date:   Mon Nov 18 14:22:03 2024
+
+          feat(books): add search endpoint with title and author filtering
+
+   **End the session** and return to your original branch:
+
+   .. code-block:: bash
+
+      $ git bisect reset
+
+   **Automating the test step:**
+
+   If you have a test or script that exits ``0`` for good and non-zero for bad, bisect can
+   run it automatically — no manual ``good``/``bad`` marking needed:
+
+   .. code-block:: bash
+
+      $ git bisect start
+      $ git bisect bad HEAD
+      $ git bisect good v0.1.0
+      $ git bisect run python -m pytest tests/unit/test_books.py -x
+
+   Git will run the command at each step and mark the result automatically, finishing
+   without any further input.
+
+   This only works reliably when commits are small and focused. If the commit that bisect
+   identifies changed ten things, you still have to read all ten diffs to find the bug.
+
+Squash and Merge
+^^^^^^^^^^^^^^^^^
+
+During development it is normal and useful to commit frequently — "WIP: add search query",
+"fix off-by-one", "add missing test". These intermediate commits are useful locally but they
+add noise to ``main``'s history.
+
+The solution is **squash merging**: when a PR is merged, all of its commits are collapsed
+into a single commit on ``main``. The result is a ``main`` history where each commit
+corresponds to exactly one issue and one PR — clean, linear, and easy to read.
+
+On GitHub, configure this in **Settings → General → Pull Requests**:
+
+- ✓ Allow squash merging
+- ✓ Allow rebase merging
+- ✗ Disable merge commits
+
+Both squash and rebase merging produce a clean, linear history without merge commits.
+Squash collapses the entire PR into one commit; rebase replays each commit individually.
+For most teams, squash merging is preferable because it enforces the one-commit-per-issue
+invariant regardless of how many intermediate "WIP" commits were made on the branch.
+Rebase merging is a reasonable choice when the branch commits are already clean and
+meaningful on their own.
+
+.. code-block:: bash
+
+   # What main looks like with squash merging:
+   $ git log --oneline main
+   a3f1c82 feat(books): add search endpoint with title and author filtering  (Issue #12)
+   9e2b447 fix(reviews): return 404 when book does not exist  (Issue #9)
+   d84a019 chore: update pre-commit hook revisions  (Issue #7)
+   1c30f11 feat: initial BookShelf API implementation
+
+Every line is one PR, one issue, one logical change. ``git revert a3f1c82`` cleanly undoes
+the search endpoint and nothing else.
+
+.. warning::
+
+   Do not mix merge commits with squash or rebase merging on the same repository.
+   Merge commits create non-linear history that undermines ``git bisect`` and makes
+   ``git log`` harder to read. Pick either squash or rebase as your team's standard,
+   disable merge commits, and enforce it.
+
+Tags and Releases
+^^^^^^^^^^^^^^^^^^
+
+A **tag** is a named pointer to a specific commit. Tags mark release points — they are how
+you answer "what was running in production on November 15th?" without digging through commit
+hashes.
+
+Use **annotated tags** for releases. Unlike lightweight tags (just a pointer), annotated
+tags store a message, a timestamp, and the tagger's identity, and are included in
+``git describe`` output.
+
+.. code-block:: bash
+
+   # Create an annotated release tag
+   $ git tag -a v0.2.0 -m "Release v0.2.0"
+   $ git push origin v0.2.0
+
+   # List all tags
+   $ git tag --list
+   v0.1.0
+   v0.2.0
+
+   # See what changed since the last tag
+   $ git log v0.1.0..v0.2.0 --oneline
+   a3f1c82 feat(books): add search endpoint with title and author filtering
+   9e2b447 fix(reviews): return 404 when book does not exist
+
+Follow **Semantic Versioning** (`semver.org <https://semver.org/>`_) for tag names:
+
+.. list-table::
+   :widths: 15 25 60
+   :header-rows: 1
+
+   * - Format
+     - Example
+     - When to increment
+   * - ``vMAJOR``
+     - ``v2.0.0``
+     - Breaking change — existing callers must update their code
+   * - ``vMAJOR.MINOR``
+     - ``v0.2.0``
+     - New feature, backwards-compatible
+   * - ``vMAJOR.MINOR.PATCH``
+     - ``v0.2.1``
+     - Bug fix, backwards-compatible
+
+With Conventional Commits and squash merging in place, the version bump and tag creation can
+be automated in CI/CD: a ``feat`` commit triggers a minor bump; a ``fix`` commit triggers a
+patch bump; a commit with ``BREAKING CHANGE:`` in the footer triggers a major bump. This is
+covered in Chapter 5.
+
+.. admonition:: Observation:
+
+   Tags are what tie everything together: a tag points to a commit, the commit references
+   an issue, the issue links back to the PR and the full discussion. A release becomes a
+   fully traceable artifact — from the version number all the way back to the original
+   requirement that motivated the change.
+
+-----
+
 **Exercise — Feature Branch Workflow**
 
 #. Ensure you are on ``main`` and up to date. If you have not yet initialized a remote
