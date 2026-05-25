@@ -19,7 +19,7 @@ jobs:
   pages:
     runs-on: ubuntu-latest
     environment:
-      name: github-pages
+      name: ${{ github.ref_name == 'master' && 'github-pages' || '' }}
       url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       pages: write
