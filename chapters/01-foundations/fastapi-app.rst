@@ -181,6 +181,43 @@ The BookShelf API uses SQLite via the standard library ``sqlite3`` module. SQLit
 for development and low-to-medium traffic production services — no server to run, no
 connection string to manage, the database is just a file.
 
+.. admonition:: What is an ORM, and why aren't we using one?
+   :class: dropdown
+
+   An **Object-Relational Mapper (ORM)** is a library that maps database rows to Python
+   objects and generates SQL from method calls, so you rarely write SQL directly. Instead
+   of:
+
+   .. code-block:: python
+
+      conn.execute("SELECT * FROM books WHERE id = ?", (book_id,))
+
+   you write something like:
+
+   .. code-block:: python
+
+      session.query(Book).filter(Book.id == book_id).first()
+
+   Popular Python ORMs include **SQLAlchemy** (the most widely used), **Django ORM**
+   (built into the Django framework), and **Tortoise ORM** (async-native).
+
+   **What ORMs give you:**
+
+   - Python objects instead of raw rows — no manual ``dict(row)`` conversions
+   - Database-agnostic queries — switch from SQLite to PostgreSQL with a config change
+   - Migration tools (e.g., Alembic for SQLAlchemy) that track schema changes as versioned files
+   - Relationship handling — load a book's reviews via ``book.reviews`` without writing a JOIN
+
+   **Why we are using raw ``sqlite3`` here:**
+
+   This chapter is about project structure, tooling, and API design — not database
+   abstractions. Raw ``sqlite3`` keeps the database layer transparent: you see exactly
+   what SQL runs, and there is no ORM configuration to learn alongside everything else.
+
+   In Chapter 4, the project migrates to PostgreSQL inside Docker. At that point the
+   direct ``sqlite3`` calls become a limitation and SQLAlchemy is introduced as the
+   production-grade replacement.
+
 Create ``src/bookshelf/database.py``:
 
 .. code-block:: python
