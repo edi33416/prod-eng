@@ -28,6 +28,7 @@ jobs:
     - id: deployment
       uses: sphinx-notes/pages@update-deps
       with:
+        documentation_path: .
         requirements_path: ./requirements.txt
         sphinx_build_options: --conf-dir .
         cache: true
