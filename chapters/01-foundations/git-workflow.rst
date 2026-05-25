@@ -105,6 +105,29 @@ Use a consistent prefix to communicate intent at a glance in ``git branch --list
 Branch names use lowercase with hyphens. They should describe the change well enough to
 understand without opening the PR: ``fix/isbn-validation`` is better than ``fix/bug1``.
 
+.. note::
+
+   **Link branches and commits to issues.** Every non-trivial change should start with an
+   issue that describes the problem or requirement before any code is written. This keeps
+   intent separate from implementation and gives reviewers context.
+
+   Include the issue number in the branch name and reference it in commit messages:
+
+   .. code-block:: text
+
+      Branch:  fix/42-isbn-validation
+      Commit:  fix(books): reject ISBNs that are not 10 or 13 digits
+
+               Issue #42
+
+   When a commit message contains ``Issue #42``, GitHub automatically creates a link between
+   the commit (and the PR) and the issue, making the full trail visible: issue → branch → PR
+   → commits. Use ``Closes #42`` instead of ``Issue #42`` to also close the issue
+   automatically when the PR is merged.
+
+   This habit pays off quickly. Six months later, ``git log`` shows *what* changed;
+   the linked issue shows *why*.
+
 -----
 
 Commit Message Conventions
