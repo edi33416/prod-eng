@@ -49,6 +49,32 @@ service, from scratch, using the same tools used in production at most software 
 
 -----
 
+Why It Matters
+--------------
+
+Production software fails in predictable ways — and each failure mode has a known solution:
+
+- **Bugs ship undetected** when there are no automated tests. Code that works on a
+  developer's machine reaches production carrying defects that tests would have caught in
+  seconds.
+- **Failures are invisible** without monitoring and alerting. You learn about an outage
+  from a user complaint or a tweet, not from a system that noticed before anyone was affected.
+- **Diagnosis takes hours** without structured logging. Unstructured ``print()`` output
+  buries the relevant error in thousands of irrelevant lines.
+- **Deployments are fragile** without containerization. "Works on my machine" is not a
+  deployment strategy. Environments drift, dependencies clash, and manual steps get skipped.
+- **Bad code reaches production** without a CI/CD pipeline. Without an automated gate,
+  there is nothing to stop unreviewed, untested, or broken code from going live.
+- **Access is uncontrolled** without authentication. An API with no auth is open to anyone
+  who can reach it.
+- **Traffic is exposed** without a reverse proxy and TLS. Unencrypted HTTP and direct
+  server exposure are not acceptable for any production service.
+
+These are not edge cases. They are the default outcome of shipping software without
+production infrastructure. Each chapter in this course removes one of these failure modes.
+
+-----
+
 What This Course Teaches
 -------------------------
 
