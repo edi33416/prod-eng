@@ -30,5 +30,5 @@ docker-open: docker-build
 	$(OPEN) $(BUILDDIR)/html/index.html
 
 # Catch-all: forward any other targets (html, latex, epub, …) to sphinx-build.
-%: Makefile
+html:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
