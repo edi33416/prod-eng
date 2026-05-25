@@ -266,6 +266,52 @@ foreign key enforcement by default for backwards compatibility.
 Book Endpoints
 ---------------
 
+FastAPI handlers receive input from two different places depending on the HTTP method and
+the nature of the data:
+
+**Request body** — used with ``POST``, ``PUT``, and ``PATCH``. Structured data sent in the
+body of the HTTP request, encoded as JSON. Declared by typing a parameter as a Pydantic
+model. FastAPI reads the body, validates it against the model, and rejects it with a 422
+if validation fails — before your handler runs.
+
+.. code-block:: python
+
+   @router.post("/")
+   def create_book(book: BookCreate) -> BookResponse:
+       ...  # book.title, book.isbn, etc. are validated and typed
+
+**Query parameters** — appended to the URL after ``?``. Used for filtering, sorting, and
+pagination on ``GET`` requests. Declared with ``= Query(...)`` or just a plain default
+value. They are part of the URL, not the body, so they are always strings on the wire —
+FastAPI coerces and validates them.
+
+.. code-block:: python
+
+   @router.get("/")
+   def list_books(
+       offset: int = Query(default=0, ge=0),
+       limit: int = Query(default=20, ge=1, le=100),
+   ) -> list[BookResponse]:
+       ...  # GET /books/?offset=20&limit=10
+
+**Path parameters** — embedded in the URL path itself (e.g., ``/books/{book_id}``).
+Declared by matching the parameter name to a ``{placeholder}`` in the route. FastAPI
+extracts and coerces them automatically.
+
+.. code-block:: python
+
+   @router.get("/{book_id}")
+   def get_book(book_id: int) -> BookResponse:
+       ...  # GET /books/42  →  book_id = 42
+
+.. admonition:: Observation:
+
+   The choice between these is not arbitrary — it follows HTTP semantics. ``GET`` requests
+   must not have a body (some clients and proxies discard it), so all input goes in the URL
+   as query or path parameters. ``POST``/``PUT``/``PATCH`` carry structured data in the
+   body because URLs have length limits and are logged in plain text — you do not want
+   sensitive fields like passwords or large payloads appearing in server access logs.
+
 Create ``src/bookshelf/routers/books.py``:
 
 .. code-block:: python
