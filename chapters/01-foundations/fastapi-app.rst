@@ -263,6 +263,107 @@ foreign key enforcement by default for backwards compatibility.
 
 -----
 
+Database Transactions
+----------------------
+
+A **transaction** is a group of database operations that are treated as a single unit of
+work. The database guarantees that either *all* operations in the transaction succeed and
+are written to disk, or *none* of them are — there is no state where half the operations
+completed and the rest did not.
+
+This guarantee is essential for correctness. Consider adding a new book that comes with
+an initial "staff pick" review:
+
+.. code-block:: python
+
+   conn.execute("INSERT INTO books ...", (...))
+   conn.execute("INSERT INTO reviews ...", (...))   # references books.id
+
+If the process crashes, the server loses power, or an exception is raised between the two
+statements, you end up with a book that has no review — or, worse, a review pointing at a
+book that was never committed. Without transactions, the database is left in a partially
+written state that violates your own data integrity rules.
+
+With a transaction, both inserts either land together or neither does.
+
+ACID Properties
+^^^^^^^^^^^^^^^^
+
+Transactions provide four guarantees, abbreviated **ACID**:
+
+.. list-table::
+   :widths: 15 85
+   :header-rows: 1
+
+   * - Property
+     - Meaning
+   * - **Atomicity**
+     - All operations in the transaction succeed, or none are applied.
+   * - **Consistency**
+     - The database moves from one valid state to another — constraints are never violated mid-transaction.
+   * - **Isolation**
+     - Concurrent transactions do not see each other's uncommitted changes.
+   * - **Durability**
+     - Once committed, changes survive crashes and power loss.
+
+For the BookShelf API, atomicity is the most immediately relevant: any operation that
+touches more than one table must be wrapped in a single transaction.
+
+Using Transactions in ``sqlite3``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``sqlite3`` module ties transaction control to Python's context manager protocol.
+Using ``with conn:`` starts a transaction implicitly; the connection commits on a clean
+exit and rolls back automatically if an exception is raised:
+
+.. code-block:: python
+
+   with get_connection() as conn:
+       conn.execute("INSERT INTO books ...", (...))
+       conn.execute("INSERT INTO reviews ...", (...))
+       # both committed together when the block exits cleanly
+
+   # if an exception is raised inside the block, sqlite3 rolls back both inserts
+
+``conn.commit()`` called explicitly inside the block has the same effect as exiting
+cleanly — it flushes the transaction immediately. You will see this pattern in the
+endpoints when a write needs to be committed before a subsequent read in the same block:
+
+.. code-block:: python
+
+   cursor = conn.execute("INSERT INTO books ...", (...))
+   conn.commit()                                          # flush before reading back
+   row = conn.execute("SELECT * FROM books WHERE id = ?", (cursor.lastrowid,)).fetchone()
+
+Without the ``commit()`` here, the ``SELECT`` on the next line might not see the inserted
+row, depending on the isolation level.
+
+When Transactions Are Required
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Use a single transaction any time a logical operation touches more than one statement and
+partial completion would leave the data in an invalid or inconsistent state:
+
+- **Multi-table writes** — inserting a parent and its children (book + initial review).
+- **Read-modify-write** — reading a value, computing a new one, writing it back. Without
+  a transaction, a concurrent request can modify the row between your read and your write.
+- **Batch operations** — inserting or updating many rows at once. Wrapping them in one
+  transaction is also dramatically faster than auto-committing each row individually,
+  because each commit forces a disk sync.
+
+Single-statement reads (``SELECT``) do not need explicit transaction management — they
+are automatically consistent within a single statement.
+
+.. warning::
+
+   Keep transactions short. A transaction holds database locks for its entire duration.
+   A long-running transaction — one that waits on a network call or sleeps between
+   statements — blocks other writers and can cause timeouts under concurrent load. Do all
+   computation *before* opening a write transaction, then write and commit as quickly as
+   possible.
+
+-----
+
 Book Endpoints
 ---------------
 
