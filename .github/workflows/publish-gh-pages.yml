@@ -19,7 +19,7 @@ jobs:
   pages:
     runs-on: ubuntu-latest
     environment:
-      name: ${{ github.ref_name == 'master' && 'github-pages' || '' }}
+      name: ${{ github.ref == 'refs/heads/master' && 'github-pages' || '' }}
       url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       pages: write
@@ -32,4 +32,4 @@ jobs:
         requirements_path: ./requirements.txt
         sphinx_build_options: --conf-dir .
         cache: true
-        publish: ${{ github.ref_name == 'master' }}
+        publish: ${{ github.ref == 'refs/heads/master' }}
