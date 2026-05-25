@@ -190,6 +190,103 @@ Why conventional commits? Two reasons:
 
 -----
 
+Maintaining a Changelog
+------------------------
+
+A changelog is a human-readable record of notable changes to a project, grouped by release.
+It is distinct from ``git log``: a commit log is a diary for developers; a changelog is a
+summary for anyone who depends on the project — teammates, API consumers, or operators
+deciding whether to upgrade.
+
+The `Keep a Changelog <https://keepachangelog.com/>`_ convention is the de facto standard.
+Each version block groups changes under fixed headings:
+
+.. code-block:: markdown
+
+   # Changelog
+
+   ## [Unreleased]
+
+   ### Added
+   - Search endpoint: `GET /books/search?q=` filters by title and author
+
+   ### Fixed
+   - `POST /books/{id}/reviews` now returns 404 when the book does not exist
+
+   ## [0.2.0] - 2024-11-15
+
+   ### Added
+   - `DELETE /books/{id}` endpoint with cascade delete for reviews
+
+   ### Changed
+   - Pagination defaults changed: limit raised from 10 to 20
+
+   ## [0.1.0] - 2024-10-01
+
+   ### Added
+   - Initial BookShelf API: CRUD for books and reviews, SQLite storage
+
+The ``[Unreleased]`` section accumulates changes since the last release. When you cut a
+release, it becomes the new version block and a fresh ``[Unreleased]`` section is opened.
+
+**Headings used:**
+
+- ``Added`` — new features
+- ``Changed`` — changes to existing behaviour
+- ``Deprecated`` — features that will be removed in a future release
+- ``Removed`` — features removed in this release
+- ``Fixed`` — bug fixes
+- ``Security`` — security fixes (always call these out explicitly)
+
+.. admonition:: Observation:
+
+   Write changelog entries for the *reader*, not the *author*. A good entry answers
+   "what changed and why does it affect me?" — not "what did I do?". Compare:
+
+   - **Poor:** ``fix(reviews): handle missing book_id``
+   - **Good:** ``POST /books/{id}/reviews now returns 404 when the book does not exist (previously 500)``
+
+   The commit message describes the implementation; the changelog entry describes the impact.
+
+Automated Changelog Generation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If the team follows Conventional Commits consistently, the changelog can be generated
+automatically from commit history using `git-cliff <https://git-cliff.org/>`_:
+
+.. code-block:: bash
+
+   $ pip install git-cliff       # or: cargo install git-cliff
+   $ git cliff --output CHANGELOG.md
+
+``git-cliff`` reads every commit since the last tag, groups them by type (``feat`` →
+*Added*, ``fix`` → *Fixed*), and writes a formatted ``CHANGELOG.md``. It is configurable
+via a ``cliff.toml`` file and integrates with CI/CD pipelines to run on every release tag
+(covered in Chapter 5).
+
+.. note::
+
+   Automated generation works well for libraries and internal services with disciplined
+   commit hygiene. For user-facing products, generated entries are often too technical —
+   a ``feat: add index on reviews.book_id`` matters to a DBA but not to an API consumer.
+   In those cases, use automation as a first draft and edit for clarity before publishing.
+
+   A better approach is to invest in **issue quality**. If every change starts with an
+   issue whose title and description are written from the user's perspective — "Searching
+   for books by partial author name returns no results" rather than "fix LIKE query" — then
+   the issue title is already a good changelog entry. Automation can pull issue titles
+   directly via the GitHub API and use them in place of raw commit summaries, producing a
+   changelog that reads naturally to end users without any manual editing.
+
+   The issue-linking practice from the previous section pays off here: because commits
+   already reference issue numbers, the automated tool has everything it needs to build the
+   full picture — user-facing issue title, implementation commits, and linked PR — and can
+   include a direct link to the issue in each changelog entry. For users with access to the
+   issue tracker, that link opens the full context: the original problem description,
+   discussion, and every code change that resolved it.
+
+-----
+
 The Pull Request Workflow
 --------------------------
 
