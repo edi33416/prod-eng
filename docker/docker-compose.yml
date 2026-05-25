@@ -1,0 +1,10 @@
+services:
+  docs-build:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    user: "${UID:-1000}:${GID:-1000}"
+    tty: true
+    volumes:
+      - ../:/volume
+    working_dir: /volume
