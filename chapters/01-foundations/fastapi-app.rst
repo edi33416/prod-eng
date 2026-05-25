@@ -412,6 +412,66 @@ Create ``src/bookshelf/routers/books.py``:
    integer ``book_id`` and return a 422 error. Always register specific paths before
    parameterized ones.
 
+``LIKE`` Patterns and SQL Injection
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The search query uses a SQL ``LIKE`` expression with ``%`` wildcards:
+
+.. code-block:: python
+
+   "SELECT * FROM books WHERE title LIKE ? OR author LIKE ?",
+   (f"%{q}%", f"%{q}%"),
+
+``%`` is SQL's wildcard character: it matches any sequence of zero or more characters.
+``f"%{q}%"`` wraps the search term with a ``%`` on each side, so ``LIKE "%pragmatic%"``
+matches ``"The Pragmatic Programmer"``, ``"Pragmatic Thinking"``, and any other title
+containing the word. Without the ``%`` characters, ``LIKE "pragmatic"`` would only match
+rows where the entire field is exactly the string ``"pragmatic"``.
+
+**User input and SQL injection**
+
+The ``q`` parameter comes directly from the user. Any time user input is incorporated into
+a database query, there is a risk of **SQL injection** — an attacker crafting input that
+breaks out of the intended query and executes arbitrary SQL.
+
+Consider what would happen if the query were built with string concatenation:
+
+.. code-block:: python
+
+   # NEVER do this
+   conn.execute(f"SELECT * FROM books WHERE title LIKE '%{q}%'")
+
+A user supplying ``q = "' OR '1'='1"`` would produce:
+
+.. code-block:: text
+
+   SELECT * FROM books WHERE title LIKE '%' OR '1'='1'%'
+
+``'1'='1'`` is always true — this returns every row in the table regardless of the title.
+With a more destructive payload, an attacker could drop tables or exfiltrate data.
+
+The ``sqlite3`` module prevents this with **parameterised queries**: the ``?`` placeholder
+and the values tuple are kept separate. The driver sends them to the database engine
+independently — the engine treats the value as a literal string, never as SQL syntax,
+no matter what characters it contains:
+
+.. code-block:: python
+
+   # Safe — q is always treated as a literal value, never as SQL
+   conn.execute(
+       "SELECT * FROM books WHERE title LIKE ?",
+       (f"%{q}%",),
+   )
+
+.. warning::
+
+   Always use parameterised queries (``?`` placeholders) for any value that originates
+   outside your code — user input, API responses, file contents, environment variables.
+   String formatting SQL is one of the most common and most damaging security mistakes in
+   web applications. The ``S`` rule set in ruff (flake8-bandit) flags string-interpolated
+   SQL as a security violation — this is one reason it is enabled in the project's ruff
+   configuration.
+
 -----
 
 Review Endpoints
