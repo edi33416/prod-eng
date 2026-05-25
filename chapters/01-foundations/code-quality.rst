@@ -164,6 +164,7 @@ or missing newlines at end of file. These cause spurious diffs in every commit a
 VS Code, PyCharm, Vim (with plugin), Emacs, and most other editors respect it automatically.
 
 .. code-block:: ini
+   :caption: :download:`.editorconfig <support/.editorconfig>`
 
    root = true
 

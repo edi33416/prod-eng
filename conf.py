@@ -4,7 +4,11 @@ author = "Course Authors"
 
 extensions = [
     "sphinx_togglebutton",
+    "sphinx_copybutton",
 ]
+
+copybutton_prompt_text = r"\$ |>>> "
+copybutton_prompt_is_regexp = True
 
 templates_path = ["_templates"]
 

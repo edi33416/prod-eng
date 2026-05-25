@@ -107,6 +107,7 @@ Pydantic models define the shape of request and response data. FastAPI uses them
 Create ``src/bookshelf/models.py``:
 
 .. code-block:: python
+   :caption: :download:`src/bookshelf/models.py <support/bookshelf-solution/src/bookshelf/models.py>`
 
    from datetime import date
 
@@ -221,6 +222,7 @@ connection string to manage, the database is just a file.
 Create ``src/bookshelf/database.py``:
 
 .. code-block:: python
+   :caption: :download:`src/bookshelf/database.py <support/bookshelf-solution/src/bookshelf/database.py>`
 
    import sqlite3
    from pathlib import Path
@@ -416,6 +418,7 @@ extracts and coerces them automatically.
 Create ``src/bookshelf/routers/books.py``:
 
 .. code-block:: python
+   :caption: :download:`src/bookshelf/routers/books.py <support/bookshelf-solution/src/bookshelf/routers/books.py>`
 
    from fastapi import APIRouter, HTTPException, Query
 
@@ -590,6 +593,7 @@ Review Endpoints
 Create ``src/bookshelf/routers/reviews.py``:
 
 .. code-block:: python
+   :caption: :download:`src/bookshelf/routers/reviews.py <support/bookshelf-solution/src/bookshelf/routers/reviews.py>`
 
    import sqlite3
 
@@ -639,6 +643,7 @@ The FastAPI App
 Wire everything together in ``src/bookshelf/main.py``:
 
 .. code-block:: python
+   :caption: :download:`src/bookshelf/main.py <support/bookshelf-solution/src/bookshelf/main.py>`
 
    from collections.abc import AsyncIterator
    from contextlib import asynccontextmanager

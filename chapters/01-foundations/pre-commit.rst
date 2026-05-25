@@ -43,6 +43,7 @@ creating isolated environments for each hook, and running them in the correct or
 **Configuration** — create ``.pre-commit-config.yaml`` in the project root:
 
 .. code-block:: yaml
+   :caption: :download:`.pre-commit-config.yaml <support/.pre-commit-config.yaml>`
 
    repos:
      - repo: https://github.com/astral-sh/ruff-pre-commit

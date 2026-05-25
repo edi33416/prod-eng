@@ -82,6 +82,7 @@ and is supported by pip, setuptools, uv, hatch, poetry, ruff, mypy, pytest, and 
 Here is the complete ``pyproject.toml`` for the BookShelf API:
 
 .. code-block:: toml
+   :caption: :download:`pyproject.toml <support/bookshelf-solution/pyproject.toml>`
 
    [build-system]
    requires = ["setuptools>=68"]
