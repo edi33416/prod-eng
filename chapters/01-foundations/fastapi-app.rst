@@ -687,6 +687,46 @@ Running the API
    INFO:     Application startup complete.
    INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 
+.. admonition:: How the ``uvicorn`` command works
+   :class: dropdown
+
+   .. code-block:: text
+
+      uvicorn bookshelf.main:app --reload
+
+   **``uvicorn``** is an ASGI server — it handles the network layer: accepts TCP connections,
+   parses HTTP requests, and calls your application code. It is to FastAPI what Apache or
+   Nginx is to a PHP app, except it runs in the same process as your application.
+
+   **``bookshelf.main:app``** is a Python import path with a specific format:
+   ``<module>:<attribute>``. Uvicorn imports the module ``bookshelf.main`` and looks up the
+   attribute named ``app`` — the ``FastAPI()`` instance defined in ``main.py``. This is why
+   the package must be installed (``pip install -e .``) before running: uvicorn imports it
+   the same way any Python code would.
+
+   **``--reload``** watches the source tree for file changes and restarts the server
+   automatically when it detects one. This works by spawning a child process that runs the
+   actual server, with a parent process watching the filesystem. The reload happens in the
+   child — the parent stays alive so the port is not released between restarts.
+
+   Never use ``--reload`` in production. It adds filesystem-watching overhead, is slower to
+   start, and the multi-process reload architecture is not designed for stability under load.
+   In production, uvicorn is typically run with multiple worker processes managed by
+   ``gunicorn`` (covered in Chapter 4):
+
+   .. code-block:: bash
+
+      # production invocation (preview — Chapter 4)
+      $ gunicorn bookshelf.main:app \
+            --worker-class uvicorn.workers.UvicornWorker \
+            --workers 4 \
+            --bind 0.0.0.0:8000
+
+   **``--host`` and ``--port``** are omitted here, so uvicorn binds to ``127.0.0.1:8000``
+   by default — localhost only, not reachable from other machines. Use
+   ``--host 0.0.0.0`` to bind on all interfaces (needed inside Docker containers, where
+   ``127.0.0.1`` only accepts connections from within the container itself).
+
 Open ``http://127.0.0.1:8000/docs`` for the auto-generated Swagger UI. Every endpoint,
 request body, and response model is documented from the code — it cannot drift from the
 implementation.
