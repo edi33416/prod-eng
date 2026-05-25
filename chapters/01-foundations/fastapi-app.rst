@@ -412,6 +412,15 @@ Create ``src/bookshelf/routers/books.py``:
    integer ``book_id`` and return a 422 error. Always register specific paths before
    parameterized ones.
 
+   A cleaner solution is to eliminate the ambiguity through API design rather than relying
+   on registration order. Using a singular resource path for single-item operations —
+   ``/book/{book_id}`` instead of ``/books/{book_id}`` — makes the conflict impossible:
+   ``/books/search`` and ``/book/{book_id}`` are on different prefixes and will never
+   collide, regardless of registration order. This also reflects a common REST convention:
+   the collection lives at the plural (``/books``), and the individual resource at the
+   singular (``/book/{id}``). The BookShelf API uses ``/books/{book_id}`` throughout for
+   simplicity, but prefer the separated design in production APIs.
+
 ``LIKE`` Patterns and SQL Injection
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
