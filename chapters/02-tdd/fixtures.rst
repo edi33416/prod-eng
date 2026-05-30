@@ -192,6 +192,21 @@ setup — like building a large dataset or starting a server — you can share i
 For database fixtures, ``function`` scope (the default) is almost always correct. A fresh
 database per test means tests are isolated — one test's data cannot affect another's.
 
+.. code-block:: python
+
+   @pytest.fixture(scope="function")   # default — fresh db per test
+   def db_conn(tmp_path):
+       conn = sqlite3.connect(tmp_path / "test.db")
+       _create_schema(conn)
+       yield conn
+       conn.close()
+
+   @pytest.fixture(scope="session")    # created once for the entire run
+   def http_client():
+       client = httpx.Client(base_url="http://localhost:8000")
+       yield client
+       client.close()
+
 .. admonition:: Observation:
 
    Use ``scope="session"`` only for truly expensive, read-only setup — like building a Docker
