@@ -40,6 +40,13 @@ mechanics: writing tests, running them, and reading their output.
       assert isinstance(x, int)    # type check
       assert "foo" in collection   # membership
 
+   Use ``x is None`` rather than ``x == None``. ``None`` is a singleton — there is exactly
+   one ``None`` object in a Python process — so identity (``is``) is the right check.
+   ``== None`` works most of the time, but it can be fooled by objects that override
+   ``__eq__`` to return ``True`` when compared to ``None``. It also draws a linter warning
+   (PEP 8 / flake8 E711). Prefer ``is`` for ``None`` checks; reserve ``==`` for value
+   equality.
+
    **Asserting exceptions with pytest:**
 
    .. code-block:: python
