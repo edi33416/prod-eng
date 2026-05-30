@@ -75,6 +75,69 @@ at the integration level (Chapter 3) where external systems are either real or s
 
 -----
 
+Contracts, Not Defenses
+------------------------
+
+There are two instincts when writing a function that could receive bad input:
+
+**Defensive programming** — handle everything that could go wrong inside the function:
+
+.. code-block:: python
+
+   def calculate_average_rating(ratings):
+       try:
+           if ratings is None:
+               ratings = []
+           cleaned = []
+           for r in ratings:
+               try:
+                   cleaned.append(int(r))
+               except (TypeError, ValueError):
+                   continue   # silently ignore bad values
+           if not cleaned:
+               return None
+           return sum(cleaned) / len(cleaned)
+       except Exception:
+           return None   # never crash
+
+**Contract programming** — define what the function expects, assert it, and fail fast if
+the contract is broken:
+
+.. code-block:: python
+
+   def calculate_average_rating(ratings: list[int]) -> float | None:
+       assert isinstance(ratings, list), f"expected list, got {type(ratings)}"
+       assert all(isinstance(r, int) for r in ratings), "ratings must be integers"
+       if not ratings:
+           return None
+       return sum(ratings) / len(ratings)
+
+The defensive version silently swallows a ``None`` argument, coerces strings to integers,
+and catches all exceptions — producing a ``None`` result regardless of what went wrong.
+A caller passing the wrong type gets back a plausible-looking answer and has no indication
+anything was wrong.
+
+The contract version crashes immediately with a clear message if a caller passes ``None``
+or a list of strings. **This is correct behavior.** A bug in the caller is exposed at
+the point where the contract is broken, not silently corrupted and surfaced three layers
+up — or never.
+
+**Where to validate defensively.** Input validation belongs at system boundaries: HTTP
+request parameters, file contents, external API responses. These come from outside the
+system and cannot be trusted. Inside the system — function calls between modules you
+control — trust the contract. Your tests verify that callers pass valid arguments; there
+is no need to re-validate what you have already asserted.
+
+.. admonition:: Observation:
+
+   A test suite and a contract-based codebase reinforce each other. Tests verify that each
+   function is called correctly; assertions inside functions verify the same at runtime.
+   When a contract is breached in a test, the assertion fires at exactly the right line.
+   In a defensive codebase, the same bug would silently return ``None`` — and you would
+   spend time tracing where that ``None`` came from.
+
+-----
+
 Before: The Ch1 Router (Logic Tangled with Infrastructure)
 ------------------------------------------------------------
 
