@@ -117,6 +117,14 @@ a meaningful test.
 
 .. admonition:: Observation:
 
+   Writing the test first also lets you design the API from the caller's perspective. Before
+   thinking about how something will be implemented, you write how you would want to use it —
+   drawing on your experience with well-designed libraries. The result is a cleaner interface:
+   sensible function names, natural argument order, no leaking of implementation details.
+   Implementation follows the design; the design is not shaped by implementation constraints.
+
+.. admonition:: Observation:
+
    The TDD constraint "write tests first" is often resisted by developers who feel it slows
    them down. In practice, TDD replaces a different, slower loop: write code → manually test
    in the browser/terminal → discover it is wrong → fix → repeat. The test suite makes the
