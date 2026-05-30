@@ -226,6 +226,85 @@ pytest provides several useful built-in fixtures:
 
 -----
 
+Passing Arguments to Fixtures
+-------------------------------
+
+pytest fixtures do not accept arguments directly from the test — a test calls
+``test_foo(db_conn)`` and pytest injects ``db_conn`` by name. But two patterns let you
+vary what a fixture provides.
+
+Factory Fixtures
+^^^^^^^^^^^^^^^^^
+
+The most common pattern: instead of returning a value, the fixture returns a *callable*.
+The test calls the callable with whatever arguments it needs:
+
+.. code-block:: python
+
+   @pytest.fixture
+   def make_book(db_conn):
+       def _factory(title="Default Title", author="Default Author",
+                    isbn="9780000000000", year=2000):
+           book = BookCreate(title=title, author=author, isbn=isbn, year=year)
+           return services.create_book(db_conn, book)
+       return _factory
+
+
+   def test_get_book_by_title(db_conn, make_book):
+       make_book(title="Clean Code", isbn="9780132350884", year=2008)
+       make_book(title="Refactoring", isbn="9780201485677", year=1999)
+
+       results = services.search_books(db_conn, "Clean")
+       assert len(results) == 1
+       assert results[0].title == "Clean Code"
+
+The fixture still manages teardown (``db_conn`` is closed after the test); the factory
+only controls what gets inserted. Default argument values mean most tests only specify
+what they care about.
+
+Parametrized Fixtures
+^^^^^^^^^^^^^^^^^^^^^^
+
+Use ``params`` on the fixture decorator to run every test that uses the fixture once per
+parameter value. pytest reports each combination as a separate test:
+
+.. code-block:: python
+
+   @pytest.fixture(params=["Clean", "Prag", "Design"])
+   def search_query(request):
+       return request.param   # request.param holds the current value
+
+
+   def test_search_returns_results(populated_db, search_query):
+       results = services.search_books(populated_db, search_query)
+       assert len(results) >= 1
+
+.. code-block:: bash
+
+   $ pytest tests/unit/test_services.py::test_search_returns_results -v
+   collected 3 items
+
+   test_services.py::test_search_returns_results[Clean] PASSED
+   test_services.py::test_search_returns_results[Prag] PASSED
+   test_services.py::test_search_returns_results[Design] PASSED
+
+``request`` is a built-in pytest fixture that provides metadata about the running test.
+The only field you need here is ``request.param`` — the current item from the ``params``
+list. Parametrized fixtures are most useful when the same fixture setup makes sense for
+multiple configurations (different database states, different input files, different
+environment settings).
+
+.. admonition:: Observation:
+
+   Use a **factory fixture** when different tests need different data — each test calls
+   the factory with its own arguments to get exactly the state it needs.
+
+   Use a **parametrized fixture** when you want to run the *same test* against multiple
+   configurations — pytest generates a separate test case for each value automatically,
+   without you writing the test more than once.
+
+-----
+
 **Exercise — Build the Shared Fixture Set**
 
 #. Create ``tests/conftest.py`` with the four fixtures shown above: ``db_conn``,
