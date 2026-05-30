@@ -131,6 +131,21 @@ Cycle 2 — ``search_books``
 **Feature:** Search books by partial title or author match. The search should be
 case-insensitive. Return an empty list when no results match.
 
+.. admonition:: Crash Course: pytest Fixtures
+   :class: dropdown
+
+   A **fixture** is a function that pytest calls before a test to set up the resources
+   that test needs — a database connection, a temporary file, a pre-populated table. The
+   test declares what it needs by name in its parameter list; pytest wires everything up.
+
+   **Why fixtures?** Without them, every test that needs a database would repeat the same
+   setup code. Fixtures centralise that logic, keep tests short, and make teardown
+   automatic.
+
+   We will look at fixtures in depth in the next section. For now, just know that you can write a
+   fixture that creates a temporary SQLite database, populates it with test data, and yields a connection to it — and then any test that needs a database can simply declare a parameter with the fixture's name.
+
+
 Step 1 — Red
 ^^^^^^^^^^^^^
 
