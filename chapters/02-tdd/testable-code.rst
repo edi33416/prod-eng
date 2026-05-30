@@ -8,39 +8,41 @@ A function that talks directly to a production database, sends emails, or reads 
 filesystem cannot be tested in isolation. This section shows how to structure code so tests
 can exercise it without real infrastructure.
 
-.. admonition:: Crash Course: Dependency Injection
-   :class: dropdown
+-----
 
-   Dependency injection (DI) means providing a component's dependencies from the outside
-   instead of creating them internally. In Python, this is usually just passing arguments.
+Dependency Injection
+---------------------
 
-   **Without DI (hard to test):**
+Dependency injection (DI) means providing a component's dependencies from the outside
+instead of creating them internally. In Python, this is usually just passing arguments.
 
-   .. code-block:: python
+**Without DI (hard to test):**
 
-      def send_welcome_email(user_id: int) -> None:
-          db = PostgreSQL("postgresql://prod-server/db")  # hardcoded
-          smtp = SMTP("mail.company.com")                 # hardcoded
-          user = db.query(f"SELECT * FROM users WHERE id = {user_id}")
-          smtp.send(user.email, "Welcome!")
+.. code-block:: python
 
-   To test this, you need a real PostgreSQL server and a real SMTP server. You cannot run
-   it in a test without sending real emails.
+   def send_welcome_email(user_id: int) -> None:
+       db = PostgreSQL("postgresql://prod-server/db")  # hardcoded
+       smtp = SMTP("mail.company.com")                 # hardcoded
+       user = db.query(f"SELECT * FROM users WHERE id = {user_id}")
+       smtp.send(user.email, "Welcome!")
 
-   **With DI (testable):**
+To test this, you need a real PostgreSQL server and a real SMTP server. You cannot run
+it in a test without sending real emails.
 
-   .. code-block:: python
+**With DI (testable):**
 
-      def send_welcome_email(db: Database, smtp: SMTP, user_id: int) -> None:
-          user = db.query(f"SELECT * FROM users WHERE id = {user_id}")
-          smtp.send(user.email, "Welcome!")
+.. code-block:: python
 
-   Now a test can pass in a fake database and a fake SMTP client. Production code passes
-   in real ones. The business logic is identical — only the dependencies differ.
+   def send_welcome_email(db: Database, smtp: SMTP, user_id: int) -> None:
+       user = db.query(f"SELECT * FROM users WHERE id = {user_id}")
+       smtp.send(user.email, "Welcome!")
 
-   **In Python, DI is just function parameters.** You don't need a framework.
+Now a test can pass in a fake database and a fake SMTP client. Production code passes
+in real ones. The business logic is identical — only the dependencies differ.
 
-   For a deeper dive, see: `Martin Fowler on Dependency Injection <https://martinfowler.com/articles/injection.html>`_
+**In Python, DI is just function parameters.** You don't need a framework.
+
+For a deeper dive, see: `Martin Fowler on Dependency Injection <https://martinfowler.com/articles/injection.html>`_
 
 -----
 
