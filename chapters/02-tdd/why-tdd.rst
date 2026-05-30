@@ -48,6 +48,37 @@ that specific bug. They change how you work:
 
 -----
 
+The Pattern Behind Production Incidents
+-----------------------------------------
+
+The Friday afternoon story above is not unusual — it is the default outcome when automated
+tests are absent. The same failure repeats, with different details, across every team that
+relies on manual verification:
+
+- **Production bugs are almost always regressions.** A change broke behavior that previously
+  worked. Without a test suite, there is no automated check to catch it before it ships.
+
+- **Developers test what they are thinking about.** Manual verification covers the happy path
+  and the cases that are top of mind. Edge cases — large values, empty inputs, boundary
+  conditions — are tested only if someone remembers to check them.
+
+- **Code review approves logic, not coverage.** A reviewer can confirm that the code looks
+  correct without knowing which inputs were never tested. A correct-looking patch can still
+  leave a gap.
+
+- **Manual testing does not scale.** A developer can verify a handful of cases in a few
+  minutes. A test suite runs hundreds of cases in under a second, every time code changes.
+
+- **Bugs in production cost more.** Customer impact, emergency rollbacks, and post-mortems
+  are expensive — in time, revenue, and trust. A failing test before commit is orders of
+  magnitude cheaper than an incident after deploy.
+
+- **Writing tests first forces you to define correct behavior before writing code.** TDD
+  makes the expected behavior explicit. You cannot accidentally skip an edge case you have
+  already written a test for.
+
+-----
+
 The TDD Cycle
 --------------
 
