@@ -115,6 +115,20 @@ tests. Markers let you categorize tests and filter them at run time.
    ]
    addopts = "-v --tb=short"
 
+These three keys configure pytest project-wide:
+
+- ``testpaths`` — directories pytest searches for tests. Without this, pytest scans the
+  entire project, which is slow and may pick up test files in unexpected locations (e.g.,
+  inside ``venv/`` or ``build/``).
+
+- ``markers`` — declares every custom marker the project uses. If you apply a marker that
+  is not declared here, pytest prints a warning for each occurrence. The string after the
+  colon is a human-readable description shown in ``pytest --markers``.
+
+- ``addopts`` — flags applied automatically to every pytest invocation, as if you had
+  typed them on the command line. ``-v`` makes test names visible in the output;
+  ``--tb=short`` prints a compact traceback on failure instead of the full one.
+
 **Apply markers to tests:**
 
 .. code-block:: python
