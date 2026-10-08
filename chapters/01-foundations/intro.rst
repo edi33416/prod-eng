@@ -10,44 +10,44 @@ Why Production Engineering?
 
 -----
 
-The 3 AM Incident
------------------
+.. The 3 AM Incident
+.. -----------------
 
-It is 3:17 AM. Your phone rings.
+.. It is 3:17 AM. Your phone rings.
 
-"The site is down." A coworker's message lands in the team chat, followed immediately by a
-stream of user complaints on social media. You open your laptop and stare at a cascade of
-500 errors. No alerts fired. No dashboard changed color. You found out because a user tweeted.
+.. "The site is down." A coworker's message lands in the team chat, followed immediately by a
+.. stream of user complaints on social media. You open your laptop and stare at a cascade of
+.. 500 errors. No alerts fired. No dashboard changed color. You found out because a user tweeted.
 
-You SSH into the server — after spending five minutes hunting for the IP address buried in a
-Slack message from six months ago. You run ``ps aux | grep python`` and see that the API
-process has crashed. You restart it with a bash one-liner you half-remember. The service
-comes back up.
+.. You SSH into the server — after spending five minutes hunting for the IP address buried in a
+.. Slack message from six months ago. You run ``ps aux | grep python`` and see that the API
+.. process has crashed. You restart it with a bash one-liner you half-remember. The service
+.. comes back up.
 
-But *why* did it crash? You ``grep`` through a ``nohup.out`` file looking for the error
-message. It is buried in 80,000 lines of unstructured ``print()`` output from three years of
-development. Eventually you find it: a ``KeyError`` on a dictionary, introduced by a new
-deployment three days ago. The crash had been silently corrupting roughly 2% of requests
-ever since — you just had no way to know.
+.. But *why* did it crash? You ``grep`` through a ``nohup.out`` file looking for the error
+.. message. It is buried in 80,000 lines of unstructured ``print()`` output from three years of
+.. development. Eventually you find it: a ``KeyError`` on a dictionary, introduced by a new
+.. deployment three days ago. The crash had been silently corrupting roughly 2% of requests
+.. ever since — you just had no way to know.
 
-Four hours. That is how long it took to diagnose a one-line bug.
+.. Four hours. That is how long it took to diagnose a one-line bug.
 
-What Went Wrong
-^^^^^^^^^^^^^^^
+.. What Went Wrong
+.. ^^^^^^^^^^^^^^^
 
-This incident is not unusual — it is the default outcome when a service lacks the
-infrastructure that production systems require. In this case:
+.. This incident is not unusual — it is the default outcome when a service lacks the
+.. infrastructure that production systems require. In this case:
 
-- **No automated tests.** The bug was introduced during development but no test caught it.
-- **No structured logging.** Diagnosing the failure took an hour of ``grep`` archaeology.
-- **No monitoring or alerting.** The team found out from a tweet, not a paging system.
-- **No containerization.** Deployment was a manual ``git pull`` and process restart.
-- **No CI/CD.** Code went directly from a laptop to production with no automated gate.
+.. - **No automated tests.** The bug was introduced during development but no test caught it.
+.. - **No structured logging.** Diagnosing the failure took an hour of ``grep`` archaeology.
+.. - **No monitoring or alerting.** The team found out from a tweet, not a paging system.
+.. - **No containerization.** Deployment was a manual ``git pull`` and process restart.
+.. - **No CI/CD.** Code went directly from a laptop to production with no automated gate.
 
-Each of these is a solved problem. This course teaches you to solve all of them — for a real
-service, from scratch, using the same tools used in production at most software companies.
-
------
+.. Each of these is a solved problem. This course teaches you to solve all of them — for a real
+.. service, from scratch, using the same tools used in production at most software companies.
+.. 
+.. -----
 
 Why It Matters
 --------------
