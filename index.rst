@@ -28,6 +28,11 @@ service — from initial scaffolding through AI agent integration.
    chapters/02-tdd/parametrize
    chapters/02-tdd/testable-code
    chapters/02-tdd/test-organization
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Advanced Testing
+
    chapters/03-advanced-testing/testing-pyramid
    chapters/03-advanced-testing/mocking
    chapters/03-advanced-testing/integration-tests
