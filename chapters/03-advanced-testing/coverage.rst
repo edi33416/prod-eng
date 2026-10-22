@@ -100,6 +100,12 @@ coverage reveals this:
 
    $ pytest --cov=bookshelf --cov-report=html --cov-branch tests/
 
+The same view is available directly in GitHub. Once CI uploads coverage reports to
+`Codecov <https://about.codecov.io/>`_, the
+`Codecov browser extension <https://github.com/codecov/codecov-browser-extension>`_
+(Chrome and Firefox) overlays covered and missed lines on files and pull requests —
+useful during code review, when you want to see whether the changed lines are tested.
+
 -----
 
 What Coverage Does Not Tell You
