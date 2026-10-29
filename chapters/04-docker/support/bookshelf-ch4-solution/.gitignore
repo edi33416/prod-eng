@@ -7,3 +7,5 @@ __pycache__/
 htmlcov/
 *.db
 .env
+.env.*
+!.env.example
