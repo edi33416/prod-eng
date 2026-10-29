@@ -266,6 +266,42 @@ this in Chapter 8.
    handle ``SIGTERM`` and shuts down gracefully — provided it really is PID 1, which is
    why the Dockerfile in the next section uses the exec form of ``CMD``.
 
+Getting a shell in a running container
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When logs are not enough, ``docker exec`` starts an **additional** process inside a
+running container. It sees the same filesystem, network, and environment as the main
+process. With ``-it`` and a shell, you are effectively logged into the container:
+
+.. code-block:: bash
+
+   $ docker run -d --name web -p 8001:8000 python:3.12-slim python -m http.server 8000
+   $ docker exec -it web bash
+   root@3899a360146e:/# cat /proc/1/cmdline | tr '\0' ' '; echo
+   python -m http.server 8000
+   root@3899a360146e:/# env | grep PYTHON_VERSION
+   PYTHON_VERSION=3.12.16
+   root@3899a360146e:/# exit
+
+   $ docker exec web whoami          # one-off command, no shell needed
+   root
+
+``exit`` ends only your shell. The container keeps running because its PID 1 is still
+``http.server``. Things to know when debugging this way:
+
+- **Minimal images lack the usual tools.** ``python:3.12-slim`` has no ``ps``,
+  ``curl``, or ``ping`` (``docker exec web ps`` fails with
+  ``executable file not found in $PATH``). Use what is there (``/proc``, ``python -c``),
+  or reach for ``sh`` if an image has no ``bash`` (Alpine).
+- **exec runs as the image's user.** Add ``-u 0`` to get root in an image that runs as
+  a non-root user, for example to ``apt-get install`` a debugging tool.
+- **Changes are temporary.** Anything you install or edit lives in the container's
+  writable layer and disappears with the container. Fix the Dockerfile, not the
+  running container.
+- **It only works on running containers.** If the container has crashed, read
+  ``docker logs`` instead, or start a fresh one with a shell as the command
+  (``docker run -it --rm IMAGE bash``) to look around.
+
 Housekeeping
 ^^^^^^^^^^^^^
 
