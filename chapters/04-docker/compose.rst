@@ -91,6 +91,36 @@ from ``api`` over the Compose network, but not from the host or the outside worl
    minutes of a tutorial and nowhere else. :ref:`ch04_networking_volumes` moves it into
    an uncommitted ``.env`` file.
 
+Reaching Services by Name
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Look at the hostnames in the API's configuration:
+
+.. code-block:: yaml
+
+   DATABASE_URL=postgresql://bookshelf:secret@db:5432/bookshelf
+   REDIS_URL=redis://cache:6379
+
+``db`` and ``cache`` are not real hostnames anywhere on the internet. They are the
+**service names** you chose under ``services:``. They work because Compose puts every
+service of the project on one shared private network, and Docker runs a small DNS
+server on that network that answers each service name with that container's current IP
+address. When the API connects to ``db``, it asks that DNS server and gets
+PostgreSQL's address. Rename the service to ``postgres`` and the URL must say
+``@postgres:5432``.
+
+Two consequences trip people up:
+
+- **localhost means "this container".** Inside ``api``, ``localhost:5432`` is the API
+  container itself, where nothing listens on 5432. Every container has its own network
+  namespace, so a service is always reached by its *name*, never by ``localhost``.
+- **Use the container port, not a published one.** ``5432`` and ``6379`` are the ports
+  the servers listen on *inside* their containers. Traffic between services stays on
+  the private network and never goes through ``ports:``, which is why ``db`` and
+  ``cache`` need no published ports at all.
+
+How that network looks from the inside is covered in :ref:`ch04_networking_volumes`.
+
 Volumes
 ^^^^^^^^
 
