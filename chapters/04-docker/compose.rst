@@ -100,8 +100,61 @@ depends_on and Health Checks
 connections. An API that connects during startup would crash in that window.
 
 ``condition: service_healthy`` waits until the dependency's **healthcheck** passes.
-``pg_isready`` asks the server whether it is accepting connections; Compose runs it
-every 5 seconds and marks the container ``healthy`` after the first success.
+``pg_isready`` asks the server whether it is accepting connections. The other three
+keys decide how Docker turns individual checks into a health status:
+
+- ``interval: 5s`` sets how often the check runs.
+- ``timeout: 5s`` sets how long one check may take. A check that hangs longer counts as a
+  failure.
+- ``retries: 5`` sets how many **consecutive** failures it takes to mark the container
+  ``unhealthy``.
+
+A container starts in the ``starting`` state. The first successful check makes it
+``healthy``, and any success resets the failure count. With the values above, a
+PostgreSQL that never comes up is declared ``unhealthy`` after about 5 × 5 s = 25
+seconds. Compose then gives up on everything that depends on it. Here is a database
+whose check always fails, with ``interval: 2s`` and ``retries: 3``:
+
+.. code-block:: yaml
+
+   # hc/docker-compose.yml — a throwaway experiment, not part of BookShelf
+   services:
+     app:
+       image: alpine:3.20
+       command: sleep 3600
+       depends_on:
+         db:
+           condition: service_healthy
+     db:
+       image: alpine:3.20
+       command: sleep 3600
+       healthcheck:
+         test: ["CMD", "false"]     # always exits 1: a check that never passes
+         interval: 2s
+         timeout: 1s
+         retries: 3
+
+.. code-block:: bash
+
+   $ docker compose up -d
+    Container hc-db-1  Started
+    Container hc-db-1  Waiting
+    Container hc-db-1  Error
+   dependency failed to start: container hc-db-1 is unhealthy
+
+   $ docker compose ps -a
+   NAME       IMAGE         COMMAND        SERVICE   STATUS                     PORTS
+   hc-app-1   alpine:3.20   "sleep 3600"   app       Created
+   hc-db-1    alpine:3.20   "sleep 3600"   db        Up 6 seconds (unhealthy)
+
+Three failed checks, about six seconds, and the dependent ``app`` container is created
+but never started. ``retries`` is therefore a trade-off. Set it too low and a database
+that is merely slow to start (the first start runs ``initdb``, which takes longer on a
+slow disk) is declared dead. Set it too high and a genuinely broken stack takes minutes
+to report the failure. If first-time initialization is the slow part, add
+``start_period: 30s`` instead. Failures during the start period do not count towards
+``retries``, so you get a grace period at startup without slowing down failure
+detection later.
 
 .. admonition:: Observation:
 
