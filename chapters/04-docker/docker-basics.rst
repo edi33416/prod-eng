@@ -96,7 +96,34 @@ Essential Commands
 Interactive containers
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-``-i`` keeps stdin open, ``-t`` allocates a terminal. Together they give you a shell:
+The general form of ``docker run`` is:
+
+.. code-block:: text
+
+   docker run [OPTIONS] IMAGE[:TAG] [COMMAND] [ARG...]
+
+- ``IMAGE[:TAG]`` selects the image, e.g. ``ubuntu:24.04``. Omit the tag and Docker
+  assumes ``:latest``.
+- ``COMMAND [ARG...]`` is the process to start inside the container. That program is
+  not supplied by your host: it must exist **in the image's filesystem**. ``bash`` below
+  is ``/bin/bash`` from the Ubuntu image, not the shell on your machine.
+
+Every image also records a **default command**, used when you give none:
+
+.. code-block:: bash
+
+   $ docker image inspect ubuntu:24.04 --format '{{json .Config.Cmd}}'
+   ["/bin/bash"]
+   $ docker image inspect python:3.12-slim --format '{{json .Config.Cmd}}'
+   ["python3"]
+
+That process becomes PID 1 of the container, and **the container lives exactly as long
+as that process**. When it exits, the container stops. Asking for a program the image
+does not contain fails immediately, e.g. ``docker run ubuntu:24.04 python3`` reports
+``executable file not found in $PATH``.
+
+``-i`` keeps stdin open, ``-t`` allocates a terminal. Together they give you an
+interactive shell:
 
 .. code-block:: bash
 
