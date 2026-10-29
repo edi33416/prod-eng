@@ -288,6 +288,97 @@ every book. Both are fixed later in this chapter.
 
 -----
 
+Inspecting the Image
+---------------------
+
+``docker image inspect`` (or the shorter ``docker inspect``, which works on images and
+containers alike) prints everything Docker knows about an image as JSON:
+
+.. code-block:: bash
+
+   $ docker image inspect bookshelf:v1
+   [
+       {
+           "Id": "sha256:4a681bc3531778ce29a2019170afe2cd6d76bb55855f26cfea98d179ee54464c",
+           "RepoTags": [
+               "bookshelf:v1"
+           ],
+           "Created": "2026-10-28T18:10:33.600860426Z",
+           "Config": {
+               "User": "",
+               "ExposedPorts": {
+                   "8000/tcp": {}
+               },
+               "Env": [
+                   "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                   "LANG=C.UTF-8",
+                   "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                   "PYTHON_VERSION=3.12.16",
+                   "PYTHON_SHA256=b5796915dc45ff745cfb4e990a7e7c93d6f546328a102ce31448d69ebc37575c",
+                   "PYTHONPATH=/app/src"
+               ],
+               "Cmd": [
+                   "uvicorn",
+                   "bookshelf.main:app",
+                   "--host",
+                   "0.0.0.0",
+                   "--port",
+                   "8000"
+               ],
+               "WorkingDir": "/app",
+               "Entrypoint": null,
+               ...
+           },
+           "Architecture": "amd64",
+           "Os": "linux",
+           "Size": 195200031,
+           "RootFS": {
+               "Type": "layers",
+               "Layers": [ ... ]
+           },
+           ...
+       }
+   ]
+
+The ``Config`` block is your Dockerfile, as Docker will execute it. ``ENV`` became
+``Env``, ``WORKDIR`` became ``WorkingDir``, ``EXPOSE`` became ``ExposedPorts``, and
+``CMD`` became ``Cmd``. Note the entries you did *not* write. ``PATH``, ``LANG`` and
+``PYTHON_VERSION`` are inherited from ``python:3.12-slim``, so an image's
+configuration is the sum of its own instructions and its base image's. An empty
+``User`` means the container runs as root.
+
+The full JSON is long. ``--format`` takes a Go template and extracts just the field you
+need, which is handy in scripts and when debugging:
+
+.. code-block:: bash
+
+   $ docker image inspect bookshelf:v1 --format '{{json .Config.Cmd}}'
+   ["uvicorn","bookshelf.main:app","--host","0.0.0.0","--port","8000"]
+
+   $ docker image inspect bookshelf:v1 --format '{{range .Config.Env}}{{println .}}{{end}}'
+   PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+   LANG=C.UTF-8
+   GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305
+   PYTHON_VERSION=3.12.16
+   PYTHON_SHA256=b5796915dc45ff745cfb4e990a7e7c93d6f546328a102ce31448d69ebc37575c
+   PYTHONPATH=/app/src
+
+   $ docker image inspect bookshelf:v1 \
+       --format '{{len .RootFS.Layers}} layers, {{.Size}} bytes, {{.Os}}/{{.Architecture}}'
+   8 layers, 195200031 bytes, linux/amd64
+
+Eight layers: four from the base image, plus one each for ``WORKDIR``, ``COPY
+requirements.lock``, ``RUN pip install`` and ``COPY src/``. ``ENV``, ``EXPOSE`` and
+``CMD`` change only metadata, so they add no layer.
+
+Use it whenever an image does not behave as expected. "Which command does this image
+actually run?", "is it the arm64 or amd64 build?" and "which environment variables are
+baked in?" all have a one-line answer here, without starting a container. Anyone who
+can pull the image can run the same command. That matters for secrets, as you will see
+in :ref:`ch04_multistage`.
+
+-----
+
 Layer Caching
 --------------
 
@@ -362,6 +453,11 @@ wasted time per build, and a hard dependency on PyPI being reachable.
    Run it with ``docker run -d --name bookshelf -p 8000:8000 bookshelf:v1`` and open
    http://localhost:8000/docs in a browser. Create a book through the Swagger UI, then
    fetch it with ``curl http://localhost:8000/books/1``.
+
+#. Inspect your image with ``docker image inspect bookshelf:v1``. Using ``--format``,
+   print only its ``Cmd``, its ``WorkingDir``, and its architecture. Then run
+   ``docker image inspect python:3.12-slim --format '{{json .Config.Cmd}}'``. Which of
+   your image's settings came from your Dockerfile and which were inherited?
 
 #. Change the ``CMD`` to bind to ``127.0.0.1`` instead of ``0.0.0.0``. Rebuild, rerun,
    and ``curl`` the health endpoint. What error do you get? Use
