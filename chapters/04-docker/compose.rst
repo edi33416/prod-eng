@@ -91,6 +91,37 @@ from ``api`` over the Compose network, but not from the host or the outside worl
    minutes of a tutorial and nowhere else. :ref:`ch04_networking_volumes` moves it into
    an uncommitted ``.env`` file.
 
+Volumes
+^^^^^^^^
+
+``volumes`` appears twice in the file, and the two halves work together:
+
+.. code-block:: yaml
+
+   services:
+     db:
+       volumes:
+         - pgdata:/var/lib/postgresql/data   # 2. mount it: NAME:PATH-IN-CONTAINER
+
+   volumes:
+     pgdata:                                 # 1. declare a named volume
+
+- The **top-level** ``volumes:`` declares the named volumes the project owns. Compose
+  creates each one on the first ``up`` and prefixes it with the project name, so
+  ``pgdata`` becomes ``bookshelf_pgdata``. A service that uses an undeclared name is a
+  configuration error:
+  ``service "db" refers to undefined volume pgdata: invalid compose project``.
+- The **service-level** entry mounts that volume into the container. It is the same
+  ``NAME:PATH`` form as ``docker run -v`` from :ref:`ch04_docker_basics`. The path is
+  not arbitrary. ``/var/lib/postgresql/data`` is where the PostgreSQL image keeps its
+  database files (its ``PGDATA``), so everything the database writes lands in the
+  volume instead of the container's writable layer.
+
+That matters because Compose **recreates** containers freely, for example whenever
+the image or the service's configuration changes on the next ``up``. The ``db``
+container is disposable; ``bookshelf_pgdata`` is not. How long the data really
+survives, and when it is deleted, is the subject of :ref:`ch04_networking_volumes`.
+
 depends_on and Health Checks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
