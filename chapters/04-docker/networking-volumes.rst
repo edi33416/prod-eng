@@ -306,6 +306,60 @@ Try it without a ``.env``:
    $ mv .env .env.bak && docker compose config; mv .env.bak .env
    error while interpolating services.db.environment.POSTGRES_PASSWORD: required variable POSTGRES_PASSWORD is missing a value: Set POSTGRES_PASSWORD in .env
 
+One file per environment
+"""""""""""""""""""""""""
+
+The same Compose file usually serves several environments: your laptop, a shared UAT
+(user acceptance testing) server, production. Only the values differ, so keep one
+file per environment and select it with ``--env-file``:
+
+.. code-block:: text
+
+   .env.example   # committed template, documents every variable
+   .env.dev       # local development
+   .env.uat       # UAT server: its own database name and credentials
+   .env.prod      # production (often not on developer machines at all)
+
+.. code-block:: bash
+
+   $ docker compose --env-file .env.uat config | grep POSTGRES_DB
+         POSTGRES_DB: bookshelf_uat
+
+   $ docker compose --env-file .env.uat up -d
+
+``--env-file`` **replaces** ``.env`` rather than adding to it. A variable that is only
+in ``.env`` is not read once you pass ``--env-file``, so each environment file must be
+complete.
+
+.. admonition:: Observation:
+
+   ``--env-file`` can be repeated. When it is, the files are merged and **the last one
+   wins** for any variable defined in more than one of them:
+
+   .. code-block:: bash
+
+      $ docker compose --env-file .env.uat --env-file .env.local config | grep POSTGRES_
+            POSTGRES_DB: bookshelf_uat            # from .env.uat
+            POSTGRES_PASSWORD: override-pass      # .env.local wins
+
+To run two environments **side by side** on one machine, give each its own project
+name as well: ``docker compose -p bookshelf-uat --env-file .env.uat up -d``. Containers,
+networks *and volumes* are prefixed with the project name, so UAT gets its own
+``bookshelf-uat_pgdata`` instead of sharing your dev data.
+
+Every one of these files except the template holds secrets. Ignore them all, then
+re-include the template:
+
+.. code-block:: text
+
+   # .gitignore
+   .env
+   .env.*
+   !.env.example
+
+The ``.dockerignore`` from :ref:`ch04_dockerfile` already excludes ``.env.*``, so none of
+them can end up in an image either.
+
 Precedence Rules
 ^^^^^^^^^^^^^^^^^
 
