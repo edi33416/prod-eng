@@ -85,8 +85,41 @@ layer. Remove the container and the writable layer is gone.
 
 This one fact explains most beginner surprises with Docker: "I installed a package in
 the container and it disappeared" and "my database was empty after I recreated the
-container" are the same thing. Data that must survive goes in a **volume** (see
-:ref:`ch04_networking_volumes`).
+container" are the same thing.
+
+-----
+
+Containers Are Ephemeral
+-------------------------
+
+Treat a container as disposable: **anything you do inside it is lost when the
+container is removed.** That covers installed packages, edited config files, and data
+written by the application. This is by design. It is what lets you replace a container
+with a fresh one from the same image at any time.
+
+.. code-block:: bash
+
+   $ docker run --name eph ubuntu:24.04 bash -c 'echo "important" > /notes.txt'
+   $ docker rm eph
+   eph
+   $ docker run --rm ubuntu:24.04 cat /notes.txt
+   cat: /notes.txt: No such file or directory
+
+Data that must outlive the container goes in a **volume**: storage that lives outside
+the container's writable layer and is mounted into it at a path of your choice with
+``-v NAME:PATH``:
+
+.. code-block:: bash
+
+   $ docker run --rm -v notes:/data ubuntu:24.04 bash -c 'echo "important" > /data/notes.txt'
+   $ docker run --rm -v notes:/data ubuntu:24.04 cat /data/notes.txt
+   important
+   $ docker volume rm notes
+   notes
+
+The first container is gone, but the file in ``/data`` survived and a brand-new
+container sees it. Everything outside ``/data`` is still discarded. Volumes in a
+multi-container setup are covered in :ref:`ch04_networking_volumes`.
 
 -----
 
