@@ -120,6 +120,22 @@ Line by line:
    port proxy accepts the connection, but nothing in the container is listening on the
    interface it forwards to. If you see that, check the bind address first.
 
+.. admonition:: Observation:
+
+   These ten lines are both a **recipe** and a **bill of materials**. As a recipe, they
+   tell Docker how to assemble the image, step by step. As a bill of materials, they
+   record everything the service is made of: the operating system and Python version
+   (``FROM``), every library at an exact version (``requirements.lock``), the
+   application code (``COPY src/``), and how it is configured and started (``ENV``,
+   ``EXPOSE``, ``CMD``). Before, that knowledge lived in a wiki page or in someone's
+   head. Now it is a file in the repository, reviewed and versioned with the code.
+
+   The bill is only as precise as its pins. ``python:3.12-slim`` is a moving tag, and
+   the Debian packages inside the base image are not listed here at all.
+   :ref:`ch04_multistage` tightens the first point. For the second, scanners such as
+   Trivy (Chapter 10) inspect the *built image* and can export a complete,
+   machine-readable SBOM (Software Bill of Materials).
+
 -----
 
 The .dockerignore File
