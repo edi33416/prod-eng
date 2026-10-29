@@ -327,7 +327,8 @@ even though the project directory also holds a 126 MB ``.venv/`` and a ``.env``.
 
 That protection disappears the moment a Dockerfile says ``COPY . .``, which is common
 and convenient. Here is the same project with ``COPY . .`` instead of the two targeted
-copies, and no ``.dockerignore``:
+copies, and no ``.dockerignore`` (``-f`` selects a Dockerfile other than the default;
+see :ref:`ch04_custom_dockerfile`):
 
 .. code-block:: bash
 
@@ -403,6 +404,50 @@ The syntax is the same as ``.gitignore``. Rebuild the ``COPY . .`` variant:
 Treat ``.dockerignore`` as mandatory even when your own Dockerfile copies files
 selectively. It is the safety net for the day someone adds ``COPY . .``, and for
 older builders that transfer the whole directory.
+
+-----
+
+.. _ch04_custom_dockerfile:
+
+Using a Different Dockerfile
+-----------------------------
+
+By default, ``docker build`` looks for a file named exactly ``Dockerfile`` in the root
+of the build context. If there is none, the build stops before it starts:
+
+.. code-block:: bash
+
+   $ mv Dockerfile Dockerfile.custom
+   $ docker build -t bookshelf:v1 .
+   ERROR: failed to solve: failed to read dockerfile: open /var/lib/docker/tmp/buildkit-mount2163510442/Dockerfile: no such file or directory
+
+Use ``-f`` (``--file``) to name a different one:
+
+.. code-block:: bash
+
+   $ docker build -f Dockerfile.custom -t bookshelf:custom .
+
+This is how one project carries several build recipes side by side: a production
+``Dockerfile``, a ``Dockerfile.dev`` with debugging tools, or experiment variants like
+the ``Dockerfile.copyall`` you just used and the ``Dockerfile.badorder`` coming up in
+:ref:`ch04_layer_caching`. Keep the
+``Dockerfile.<purpose>`` naming. Editors and linters recognise it as a Dockerfile.
+
+``-f`` selects the *recipe*. It does not change the *context*. The two are independent:
+
+- The file can live anywhere, even outside the context:
+  ``docker build -f docker/Dockerfile.prod .``. ``COPY src/ ./src/`` still means
+  ``./src`` relative to the context (``.``), **not** relative to the Dockerfile.
+- The Dockerfile is read separately from the context, so ``.dockerignore`` patterns such
+  as ``Dockerfile*`` never stop it from being found. They only keep it out of
+  ``COPY . .``.
+- A Dockerfile can have its own ignore file. If ``Dockerfile.custom.dockerignore``
+  exists next to ``Dockerfile.custom``, BuildKit uses it *instead of* ``.dockerignore``
+  for that build. That is useful when, say, a test image needs ``tests/`` but the
+  production image must not ship it.
+
+Compose has the same option: ``build: {context: ., dockerfile: Dockerfile.custom}``.
+You will meet Compose in :ref:`ch04_compose`.
 
 -----
 
@@ -496,6 +541,8 @@ can pull the image can run the same command. That matters for secrets, as you wi
 in :ref:`ch04_multistage`.
 
 -----
+
+.. _ch04_layer_caching:
 
 Layer Caching
 --------------
