@@ -229,11 +229,38 @@ Anything after the image name replaces the image's default command:
 Add ``--rm`` to remove the container automatically when it exits. For throwaway commands,
 always use it — otherwise ``docker ps -a`` fills up with dead containers.
 
+Publishing ports
+^^^^^^^^^^^^^^^^^
+
+Each container gets its own **isolated network namespace**: its own interfaces, its own
+IP address, its own ports. A server listening on port 8000 *inside* the container is
+not reachable from the host or the outside world until you explicitly **publish** the
+port with ``-p HOST_PORT:CONTAINER_PORT``:
+
+.. code-block:: console
+
+   $ docker run -d --name web python:3.12-slim python -m http.server 8000
+   $ curl -sS localhost:8000
+   curl: (7) Failed to connect to localhost port 8000 after 0 ms: Couldn't connect to server
+   $ docker rm -f web
+
+   $ docker run -d --name web -p 8001:8000 python:3.12-slim python -m http.server 8000
+   $ docker port web
+   8000/tcp -> 0.0.0.0:8001
+   $ curl -s -o /dev/null -w "%{http_code}\n" localhost:8001
+   200
+   $ docker rm -f web
+
+The server was running both times; only the second container had a door to the
+outside. Host and container ports do not have to match: here host port 8001 forwards
+to container port 8000. Publish only what clients actually need. Which ports to expose
+in a multi-service stack is covered in :ref:`ch04_networking_volumes`.
+
 Background containers, logs, stop, remove
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``-d`` (detached) runs the container in the background; ``-p host:container`` publishes a
-port:
+``-d`` (detached) runs the container in the background; ``-p`` publishes its port as
+shown above:
 
 .. code-block:: bash
 
