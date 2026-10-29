@@ -469,9 +469,75 @@ endpoint to return ``{"status": "ok", "mode": "dev"}``:
    bookshelf-api-1  | INFO:     Application startup complete.
    bookshelf-api-1  | INFO:     172.25.0.1:53284 - "GET /health HTTP/1.1" 200 OK
 
-No rebuild. To see the merged result of the two files, run
-``docker compose -f docker-compose.yml -f docker-compose.dev.yml config``. Lists such as
-``volumes`` and ``ports`` are *merged*; scalars such as ``command`` are *replaced*.
+No rebuild.
+
+How the two files are combined
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``-f docker-compose.yml -f docker-compose.dev.yml`` does **not** build or start two
+stacks. Compose reads the files in order and **merges them into a single
+configuration** before doing anything else. The second file is an overlay that only
+lists what differs. ``up --build`` then acts on that one merged result.
+
+The dev file never mentions ``build``, so after the merge there is still one ``api``
+service with the base file's ``build: .``, and ``--build`` builds **one image**, the
+same one production builds. In dev mode that image is simply run differently: the bind
+mount hides its baked-in ``/app/src`` behind your working tree, and the overridden
+``command`` starts uvicorn with ``--reload``.
+
+When both files set the same key, the later file wins, but *how* depends on the kind
+of key:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 34 30 36
+
+   * - Kind of key
+     - Merge behaviour
+     - In BookShelf
+   * - Single values (``command``, ``image``, ``restart``)
+     - Replaced
+     - Dev ``command`` replaces the default uvicorn command
+   * - Mappings (``environment``, ``healthcheck``)
+     - Merged key by key; same key takes the later value
+     - Adding one variable in an override keeps all the others
+   * - ``ports``
+     - Combined
+     - Dev adds ``127.0.0.1:5432:5432`` to ``db``
+   * - ``volumes``
+     - Combined, matched by container path
+     - Dev adds ``./src:/app/src``; ``db`` keeps ``pgdata``
+
+You never have to guess. ``config`` prints the single file Compose will actually use:
+
+.. code-block:: bash
+
+   $ docker compose -f docker-compose.yml -f docker-compose.dev.yml config
+   ...
+     api:
+       build:
+         context: /home/student/bookshelf
+         dockerfile: Dockerfile
+       command:
+       - uvicorn
+       - bookshelf.main:app
+       - --host=0.0.0.0
+       - --port=8000
+       - --reload
+       - --reload-dir=/app/src
+       - --log-level=debug
+       ...
+       restart: "no"
+       volumes:
+       - type: bind
+         source: /home/student/bookshelf/src
+         target: /app/src
+   ...
+
+The ``build`` block comes from the base file. ``command``, ``restart`` and the bind
+mount come from the override. An override *can* change how the image is built, for
+example ``build: {context: ., dockerfile: Dockerfile.dev}``. Even then it is still one
+build per service, just from a different Dockerfile.
 
 .. admonition:: Observation:
 
