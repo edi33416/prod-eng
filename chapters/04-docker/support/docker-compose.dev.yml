@@ -1,0 +1,26 @@
+# Development overrides. Use together with the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+services:
+  api:
+    # Live reload: the host's src/ replaces the copy baked into the image.
+    command:
+      - uvicorn
+      - bookshelf.main:app
+      - --host=0.0.0.0
+      - --port=8000
+      - --reload
+      - --reload-dir=/app/src
+      - --log-level=debug
+    volumes:
+      - ./src:/app/src
+    restart: "no"
+
+  db:
+    # Reach PostgreSQL from host tools (psql, DBeaver, pgAdmin) for debugging.
+    # Bound to 127.0.0.1 so it is not reachable from the rest of the network.
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  cache:
+    ports:
+      - "127.0.0.1:6379:6379"

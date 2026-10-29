@@ -44,6 +44,14 @@ service — from initial scaffolding through AI agent integration.
    :maxdepth: 1
    :caption: Part III — Infrastructure
 
+   chapters/04-docker/why-containers
+   chapters/04-docker/docker-basics
+   chapters/04-docker/dockerfile
+   chapters/04-docker/multistage
+   chapters/04-docker/compose
+   chapters/04-docker/migrate-to-postgres
+   chapters/04-docker/networking-volumes
+
 .. toctree::
    :maxdepth: 1
    :caption: Part IV — Observability & Operations

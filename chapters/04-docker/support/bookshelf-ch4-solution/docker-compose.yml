@@ -1,0 +1,48 @@
+# Production-style stack: API + PostgreSQL + Redis.
+#   cp .env.example .env    # then set a real password
+#   docker compose up -d --build
+services:
+  api:
+    build: .
+    image: bookshelf:latest
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bookshelf}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-bookshelf}
+      # Provisioned now, used by later chapters (caching, LiteLLM in Ch11).
+      REDIS_URL: redis://cache:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bookshelf}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-bookshelf}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # $$ escapes Compose interpolation: the variables are expanded by the
+      # shell inside the container, from the environment set above.
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  cache:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:
