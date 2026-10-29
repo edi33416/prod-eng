@@ -138,52 +138,76 @@ Line by line:
 
 -----
 
-The .dockerignore File
------------------------
+Building and Running
+---------------------
 
-``docker build .`` sends the whole directory — the **build context** — to the Docker
-daemon before the first instruction runs. Without a filter, that includes ``.git/``,
-``.venv/`` (hundreds of MB), your local ``bookshelf.db``, and ``.env`` with real secrets.
-
-Create ``.dockerignore`` next to the Dockerfile:
+The build command has two arguments worth understanding before you run it:
 
 .. code-block:: text
 
-   # Version control and editor state
-   .git/
-   .gitignore
-   .vscode/
-   .idea/
+   docker build -t bookshelf:v1 .
+                   └───┬───┘└┬┘ └─ build context: the directory whose files COPY can see
+                       │     └─── tag
+                       └───────── repository (image name)
 
-   # Python build/cache artefacts
-   __pycache__/
-   *.py[cod]
-   *.egg-info/
-   .venv/
-   .pytest_cache/
-   .ruff_cache/
-   .coverage
-   htmlcov/
+The trailing ``.`` is the **build context**, covered in the next section. ``-t`` (tag)
+gives the image a name. Without it, the image is identified only by its content hash
+(``sha256:4a681bc3…``), which is unique but not something you want to type.
 
-   # Local data and secrets — never bake these into an image
-   *.db
-   .env
-   .env.*
+Image names
+^^^^^^^^^^^^
 
-   # Not needed at runtime
-   tests/
-   docker-compose*.yml
-   Dockerfile*
-   Makefile
+A full image reference has up to four parts:
 
-The syntax is the same as ``.gitignore``. With it, the build context for BookShelf is
-about 12 kB. Without it, a ``COPY . .`` would happily copy ``.env`` into a layer — and
-anyone who can pull the image can extract it, even if a later layer deletes the file.
+.. code-block:: text
 
------
+   [REGISTRY/][NAMESPACE/]REPOSITORY[:TAG]
 
-Building and Running
----------------------
+   bookshelf:v1                          → docker.io/library/bookshelf:v1
+   python:3.12-slim                      → docker.io/library/python:3.12-slim
+   aquasec/trivy:0.57.0                  → docker.io/aquasec/trivy:0.57.0
+   harbor.example.com/shop/bookshelf:v1  → a private registry (Chapter 10)
+
+- **REGISTRY** is the server the image is pushed to and pulled from. It defaults to
+  Docker Hub (``docker.io``).
+- **NAMESPACE** is a user or organization on that registry. Official images like
+  ``python`` live in the special ``library`` namespace.
+- **REPOSITORY** is the image's name, here ``bookshelf``.
+- **TAG** identifies a version within the repository. **It defaults to latest**, so
+  ``docker build -t bookshelf .`` produces ``bookshelf:latest``.
+
+Docker fills in the defaults silently. You can see it in the last line of the build
+output below: ``naming to docker.io/library/bookshelf:v1``.
+
+Tags are labels, not versions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A tag is a **movable pointer** to an image ID, like a Git branch pointing at a commit.
+One image can carry several tags, either at build time (repeat ``-t``) or afterwards
+with ``docker tag``:
+
+.. code-block:: bash
+
+   $ docker tag bookshelf:v1 bookshelf:latest
+   $ docker build -q -t bookshelf:v1 -t bookshelf:0.3.0 .
+   $ docker images bookshelf
+   REPOSITORY   TAG       IMAGE ID       CREATED         SIZE
+   bookshelf    0.3.0     4a681bc35317   2 minutes ago   195MB
+   bookshelf    latest    4a681bc35317   2 minutes ago   195MB
+   bookshelf    v1        4a681bc35317   2 minutes ago   195MB
+
+Three tags, one image: same ID, and the 195 MB is stored once. Rebuilding with
+``-t bookshelf:v1`` after a code change moves the ``v1`` label to the new image, and
+the old image is left untagged (``<none>``). Two consequences for production:
+
+- ``latest`` does **not** mean "newest". It is just the default tag name, pointing at
+  whatever image was last tagged that way. Never deploy ``:latest``: you cannot tell
+  what is running, and you cannot roll back to it.
+- Tag releases with something meaningful and never reuse it: the application version
+  (``0.3.0``, from ``pyproject.toml``) or the Git commit SHA. Chapter 5 tags every CI
+  build with the commit SHA.
+
+Build it:
 
 .. code-block:: bash
 
@@ -193,7 +217,7 @@ Building and Running
     => [internal] load .dockerignore                                       0.0s
     => [internal] load metadata for docker.io/library/python:3.12-slim     0.0s
     => [internal] load build context                                       0.1s
-    => => transferring context: 12.26kB                                    0.0s
+    => => transferring context: 13.72kB                                    0.0s
     => [1/5] FROM docker.io/library/python:3.12-slim                       0.1s
     => [2/5] WORKDIR /app                                                  0.0s
     => [3/5] COPY requirements.lock .                                      0.0s
@@ -285,6 +309,100 @@ Look inside the running container:
 Two things should bother you. The API runs as **root**. And the SQLite database lives
 **in the container's writable layer, next to the source code** — ``docker rm`` deletes
 every book. Both are fixed later in this chapter.
+
+-----
+
+The Build Context and .dockerignore File
+-----------------------------------------
+
+The ``.`` at the end of ``docker build`` is the **build context**: the set of files
+the build is allowed to see. ``COPY`` paths are resolved relative to it, and nothing
+outside it is reachable. ``COPY ../secrets .`` fails, by design.
+
+The Docker daemon may run somewhere other than your shell (inside Docker Desktop's VM,
+or on a remote host), so the context is transferred to it. BuildKit, the default
+builder since Docker 23, only transfers the files that ``COPY`` instructions actually
+reference. That is why the build above reported ``transferring context: 13.72kB``,
+even though the project directory also holds a 126 MB ``.venv/`` and a ``.env``.
+
+That protection disappears the moment a Dockerfile says ``COPY . .``, which is common
+and convenient. Here is the same project with ``COPY . .`` instead of the two targeted
+copies, and no ``.dockerignore``:
+
+.. code-block:: bash
+
+   $ docker build -f Dockerfile.copyall -t bookshelf:copyall .
+    => [internal] load build context                                       1.5s
+    => => transferring context: 108.35MB                                   1.5s
+   ...
+   $ docker images bookshelf:copyall
+   REPOSITORY   TAG       IMAGE ID       CREATED          SIZE
+   bookshelf    copyall   eb571512599a   3 seconds ago    302MB
+
+   $ docker run --rm bookshelf:copyall ls -a /app
+   .  ..  .env  .git  .gitignore  .venv  Dockerfile  Dockerfile.copyall  Makefile
+   pyproject.toml  requirements.lock  src  tests
+
+   $ docker run --rm bookshelf:copyall cat /app/.env
+   POSTGRES_PASSWORD=hunter2
+
+108 MB sent to the daemon, 107 MB more in the image (your host's ``.venv``, which the
+container never uses), the Git history, the tests, and the **database password**, now
+readable by anyone who can pull the image. Deleting the file in a later layer would
+not help: the earlier layer still contains it.
+
+A ``.dockerignore`` file excludes paths from the context, whatever the Dockerfile
+says. Create it next to the Dockerfile:
+
+.. code-block:: text
+
+   # Version control and editor state
+   .git/
+   .gitignore
+   .vscode/
+   .idea/
+
+   # Python build/cache artefacts
+   __pycache__/
+   *.py[cod]
+   *.egg-info/
+   .venv/
+   .pytest_cache/
+   .ruff_cache/
+   .coverage
+   htmlcov/
+
+   # Local data and secrets — never bake these into an image
+   *.db
+   .env
+   .env.*
+
+   # Not needed at runtime
+   tests/
+   docker-compose*.yml
+   Dockerfile*
+   Makefile
+
+The syntax is the same as ``.gitignore``. Rebuild the ``COPY . .`` variant:
+
+.. code-block:: bash
+
+   $ docker build -f Dockerfile.copyall -t bookshelf:copyall .
+    => => transferring context: 15.30kB                                    0.0s
+   ...
+   $ docker images bookshelf:copyall
+   REPOSITORY   TAG       IMAGE ID       CREATED          SIZE
+   bookshelf    copyall   ca59e6c40f40   2 seconds ago    195MB
+
+   $ docker run --rm bookshelf:copyall ls -a /app
+   .  ..  .dockerignore  pyproject.toml  requirements.lock  src
+
+   $ docker run --rm bookshelf:copyall cat /app/.env
+   cat: /app/.env: No such file or directory
+
+Treat ``.dockerignore`` as mandatory even when your own Dockerfile copies files
+selectively. It is the safety net for the day someone adds ``COPY . .``, and for
+older builders that transfer the whole directory.
 
 -----
 
