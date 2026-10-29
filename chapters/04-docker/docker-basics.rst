@@ -62,6 +62,16 @@ When you run a container, Docker adds one thin **writable layer** on top. Everyt
 process writes — log files, a SQLite database, ``apt install`` results — goes into that
 layer. Remove the container and the writable layer is gone.
 
+.. note::
+
+   A container is an **instance** of an image. One image can have many containers
+   running at the same time, each with its own writable layer, process tree, and
+   network address, all sharing the same read-only image layers underneath. It is the
+   same relationship as between a binary on disk and its processes: run
+   ``/usr/bin/python3`` three times and you get three independent processes from one
+   executable file. ``docker run bookshelf:v1`` three times gives you three independent
+   containers from one image.
+
 .. code-block:: text
 
    ┌─────────────────────────────┐
