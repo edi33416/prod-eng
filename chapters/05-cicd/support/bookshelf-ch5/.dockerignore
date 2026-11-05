@@ -1,0 +1,26 @@
+# Version control and editor state
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Python build/cache artefacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local data and secrets — never bake these into an image
+*.db
+.env
+.env.*
+
+# Not needed at runtime
+tests/
+docker-compose*.yml
+Dockerfile*
+Makefile
