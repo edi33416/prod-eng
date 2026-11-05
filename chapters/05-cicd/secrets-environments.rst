@@ -423,6 +423,104 @@ is running where?". This view records that for every deployment.
 
 -----
 
+.. _ch05_blue_green:
+
+Blue-Green Deployments
+-----------------------
+
+Staging and the approval gate decide *whether* a release goes to production. They say
+nothing about *how* it replaces the running version. The naive way is to stop the old
+containers and start the new ones in the same place. That has two problems: there is a
+window where the API is down or half-updated, and if the new version is broken, rolling
+back means another deployment under pressure.
+
+A **blue-green deployment** keeps two complete, identical production environments.
+One of them (say **blue**) serves all traffic. The new release goes to the idle one
+(**green**), and the switch is a single change at the router or load balancer:
+
+.. code-block:: text
+
+   Before the switch                      After the switch
+
+           users                                  users
+             │                                      │
+        ┌────▼────┐                            ┌────▼────┐
+        │ router  │                            │ router  │
+        └────┬────┘                            └────┬────┘
+             │                                      └──────────────┐
+             ▼                                                     ▼
+   ┌────────────────┐ ┌────────────────┐   ┌────────────────┐ ┌────────────────┐
+   │ blue  (live)   │ │ green  (new)   │   │ blue  (idle)   │ │ green  (live)  │
+   │ bookshelf:a1b2 │ │ bookshelf:c3d4 │   │ bookshelf:a1b2 │ │ bookshelf:c3d4 │
+   └───────┬────────┘ └───────┬────────┘   └───────┬────────┘ └───────┬────────┘
+           └─────────┬────────┘                    └─────────┬────────┘
+               ┌─────▼──────┐                          ┌─────▼──────┐
+               │ PostgreSQL │                          │ PostgreSQL │
+               └────────────┘                          └────────────┘
+
+The deployment becomes three steps:
+
+#. **Deploy** the new image (``bookshelf:<sha>``, the one CI built and staging ran) to
+   the idle color. Users see nothing yet.
+#. **Verify** the idle color directly, bypassing the router: ``/health``, a smoke test,
+   a look at the logs.
+#. **Switch** the router to the new color. Every new request goes to the new version
+   at once.
+
+**Rollback is switching back.** The old color is still running, with the old image,
+already warm. Undoing a bad release takes seconds and needs no build, no pull, and no
+approval. This is the "rehearsed, automated rollback" that Knight Capital did not have.
+After a while without problems, the old color is updated to the next release, or shut
+down to save money until the next deployment.
+
+The idea fits this chapter's pieces. The image is immutable and tagged by SHA, so
+"blue runs ``a1b2``, green runs ``c3d4``" is exact. In a real ``cd.yml``, the production
+job would deploy to the idle color and run a smoke test, and a second job, behind the
+approval gate, would perform the switch.
+
+What blue-green does **not** solve:
+
+- **The database is shared.** Both colors talk to the same PostgreSQL, so the schema
+  must work with the old *and* the new code at the same time. A migration that renames
+  a column breaks blue the moment it runs, and makes "switch back" useless. The usual
+  approach is **expand, then contract**: add the new column in one release, move the
+  code to it, and drop the old column in a later release, once no running version uses
+  it.
+- **It costs double.** Two full production environments, even if one is idle most of
+  the time.
+- **Everyone moves at once.** A bug that only shows up under real traffic reaches
+  100% of users at the moment of the switch. You find out fast and roll back fast, but
+  everyone is affected in between.
+
+Two related strategies trade these differently:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 42 40
+
+   * - Strategy
+     - How it switches
+     - Trade-off
+   * - **Blue-green**
+     - All traffic moves from the old environment to the new one in one step
+     - Instant rollback; double capacity; all users hit by a bad release
+   * - **Rolling**
+     - Instances are replaced a few at a time (the default in Kubernetes)
+     - No extra environment; old and new versions serve traffic together during the
+       rollout; rollback is another rollout
+   * - **Canary**
+     - A small share of traffic (say 5%) goes to the new version first, then more
+       if the metrics stay healthy
+     - Limits the damage of a bad release; needs good monitoring to decide when to
+       continue
+
+Canary releases depend on comparing error rates and latency between versions, which is
+what Chapters 8 and 9 build. Our deploy jobs remain placeholders, but whichever
+strategy a team picks, it plugs into the same pipeline: one image, built once, promoted
+through staging and an approval gate.
+
+-----
+
 **Exercises**
 
 #. Create a repository secret ``DEPLOY_TOKEN`` with a made-up value. Add a temporary
