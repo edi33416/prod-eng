@@ -1,0 +1,19 @@
+# Internal Python package index: serves only the wheels in ./packages.
+#   ./populate.sh ../bookshelf-ch5-solution/requirements-dev.lock
+#   docker compose up -d
+#   pip install --index-url http://localhost:8080/simple/ ...
+name: pypi-mirror
+
+services:
+  pypi:
+    image: pypiserver/pypiserver:v2.4.2
+    # --disable-fallback: a package that is not in ./packages is an error,
+    #   not a silent redirect to pypi.org (the default).
+    # No password file (-P): uploads are refused. The index is populated
+    #   only through populate.sh, after review.
+    command: run --disable-fallback /data/packages
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./packages:/data/packages:ro
+    restart: unless-stopped

@@ -54,6 +54,19 @@ service — from initial scaffolding through AI agent integration.
 
 .. toctree::
    :maxdepth: 1
+   :caption: CI/CD Pipelines
+
+   chapters/05-cicd/cicd-concepts
+   chapters/05-cicd/github-actions-basics
+   chapters/05-cicd/full-pipeline
+   chapters/05-cicd/secrets-environments
+   chapters/05-cicd/docker-in-ci
+   chapters/05-cicd/internal-package-index
+   chapters/05-cicd/branch-protection
+   chapters/05-cicd/gitlab-ci
+
+.. toctree::
+   :maxdepth: 1
    :caption: Part IV — Observability & Operations
 
 .. toctree::
