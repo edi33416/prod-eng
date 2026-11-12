@@ -1,0 +1,117 @@
+# Continuous delivery: runs after CI succeeds on main. Builds the image once,
+# pushes it to ghcr.io, deploys it to staging, then — after a human approves —
+# deploys the same image to production.
+#
+# The deploy steps are placeholders: they print what a real deployment would do.
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Never cancel a deployment halfway; queue the next one instead.
+concurrency:
+  group: cd-main
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  # The commit CI tested. github.sha would be the latest commit on main,
+  # which is not necessarily the one that passed.
+  GIT_SHA: ${{ github.event.workflow_run.head_sha }}
+  # Package index for the Docker build; see ci.yml.
+  PIP_INDEX_URL: ${{ vars.PIP_INDEX_URL || 'https://pypi.org/simple/' }}
+
+jobs:
+  build-and-push:
+    name: build-and-push
+    # Only commits that passed CI, that were pushed to this repository's main
+    # (a fork's PR from a branch called "main" also matches branches: [main]).
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.name }}:${{ github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.GIT_SHA }}
+      # Image names must be lowercase; GitHub user and repo names need not be.
+      - name: Compute image name
+        id: image
+        run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:${{ env.GIT_SHA }}
+            ${{ steps.image.outputs.name }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.GIT_SHA }}
+          build-args: PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-staging:
+    name: deploy-staging
+    needs: build-and-push
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: staging
+      url: https://staging.bookshelf.example.com
+    steps:
+      - name: Deploy to staging
+        env:
+          IMAGE: ${{ needs.build-and-push.outputs.image }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          if [ -z "$DEPLOY_TOKEN" ]; then
+            echo "::error::DEPLOY_TOKEN is not set for the staging environment"
+            exit 1
+          fi
+          echo "Deploying $IMAGE to staging"
+          # A real deployment would use $DEPLOY_TOKEN here, e.g. to call a
+          # deploy API or SSH to the host and run: docker compose pull && up -d
+
+  deploy-production:
+    name: deploy-production
+    needs: [build-and-push, deploy-staging]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # Protection rules on this environment (required reviewers) pause the job
+    # until someone approves it in the GitHub UI.
+    environment:
+      name: production
+      url: https://bookshelf.example.com
+    steps:
+      - name: Deploy to production
+        env:
+          IMAGE: ${{ needs.build-and-push.outputs.image }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          if [ -z "$DEPLOY_TOKEN" ]; then
+            echo "::error::DEPLOY_TOKEN is not set for the production environment"
+            exit 1
+          fi
+          echo "Deploying $IMAGE to production"

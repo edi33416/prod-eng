@@ -1,0 +1,22 @@
+# Keycloak in development mode, for the optional SSO exercise.
+#   docker compose up -d
+#   open http://localhost:8080   (admin console: admin / admin)
+#
+# start-dev: plain HTTP, in-memory-ish H2 database, relaxed security.
+# Never run start-dev in production.
+name: bookshelf-sso
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command: ["start-dev", "--import-realm"]
+    environment:
+      # Keycloak 26 replaced KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD with these.
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      # Every *.json here is imported at startup if the realm does not exist.
+      - ./import:/opt/keycloak/data/import:ro

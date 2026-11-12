@@ -67,6 +67,19 @@ service — from initial scaffolding through AI agent integration.
 
 .. toctree::
    :maxdepth: 1
+   :caption: Authentication
+
+   chapters/06-auth/auth-concepts
+   chapters/06-auth/jwt-fundamentals
+   chapters/06-auth/implementing-jwt
+   chapters/06-auth/refresh-tokens
+   chapters/06-auth/oauth2
+   chapters/06-auth/sso
+   chapters/06-auth/security-best-practices
+   chapters/06-auth/testing-auth
+
+.. toctree::
+   :maxdepth: 1
    :caption: Part IV — Observability & Operations
 
 .. toctree::
