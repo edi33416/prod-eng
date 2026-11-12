@@ -1,0 +1,13 @@
+# Weekly PRs that bump pinned actions (including SHA pins) and base images.
+# Each PR runs through CI like any other change.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly

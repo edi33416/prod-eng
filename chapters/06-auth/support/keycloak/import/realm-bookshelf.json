@@ -1,0 +1,64 @@
+{
+  "realm": "bookshelf",
+  "enabled": true,
+  "displayName": "BookShelf SSO",
+  "sslRequired": "external",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "roles": {
+    "realm": [
+      { "name": "bookshelf-admin", "description": "May delete books" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "bookshelf-api",
+      "name": "BookShelf API",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "bookshelf-api-dev-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:8000/auth/oidc/callback"],
+      "webOrigins": ["+"],
+      "attributes": { "pkce.code.challenge.method": "S256" }
+    },
+    {
+      "clientId": "bookshelf-admin-ui",
+      "name": "BookShelf Admin UI",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "bookshelf-admin-ui-dev-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:9000/callback"],
+      "attributes": { "pkce.code.challenge.method": "S256" }
+    }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "enabled": true,
+      "email": "alice@example.com",
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Liddell",
+      "credentials": [
+        { "type": "password", "value": "alice-password-123", "temporary": false }
+      ],
+      "realmRoles": ["default-roles-bookshelf", "bookshelf-admin"]
+    },
+    {
+      "username": "bob",
+      "enabled": true,
+      "email": "bob@example.com",
+      "emailVerified": true,
+      "firstName": "Bob",
+      "lastName": "Builder",
+      "credentials": [
+        { "type": "password", "value": "bob-password-1234", "temporary": false }
+      ],
+      "realmRoles": ["default-roles-bookshelf"]
+    }
+  ]
+}
